@@ -28,6 +28,17 @@
             --ssr-gold: #fbbf24;
             --ssr-glow: rgba(251, 191, 36, 0.4);
         }
+                /* --- 新增：隱藏滾輪但保留滑動功能 --- */
+        ::-webkit-scrollbar {
+            width: 0px;  /* Chrome, Safari, Edge 隱藏滾輪寬度 */
+            background: transparent; /* 背景透明 */
+        }
+        html {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        /* ------------------------------------- */
+
         html.dark-mode {
             --bg: #121212; --card: #1e1e1e; --text: #e5e7eb; --sub-text: #9ca3af; 
             --border: #374151; --hover: #27272a;
