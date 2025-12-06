@@ -9,6 +9,48 @@
     <link rel="manifest" href="manifest.json">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
+        /* --- v5.5 Wix 專用捲動優化核心 --- */
+        
+        /* 1. 針對 Webkit 瀏覽器 (Chrome, Safari, Edge) 隱藏捲軸 */
+        ::-webkit-scrollbar {
+            display: none !important; /* 強制不顯示 */
+            width: 0px !important;
+            background: transparent !important;
+        }
+
+        /* 2. 針對 Firefox 與 IE/Edge 舊版隱藏捲軸 */
+        html, body {
+            scrollbar-width: none !important; /* Firefox */
+            -ms-overflow-style: none !important; /* IE/Edge */
+        }
+
+        /* 3. 關鍵：允許捲動傳遞 (Scroll Chaining) 與慣性捲動 */
+        html { 
+            min-height: 100%; 
+            background-color: var(--bg); 
+            /* 移除之前的 none，改為 auto 以允許捲動傳遞給 Wix 父頁面 */
+            overscroll-behavior-y: auto; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body { 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 0; 
+            background-color: var(--bg); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            color: var(--text); 
+            -webkit-text-size-adjust: 100%; 
+            overflow-x: hidden; 
+            width: 100%; 
+            transition: background-color 0.3s, color 0.3s;
+            /* 讓 iOS 滑動有慣性，不會卡卡的 */
+            -webkit-overflow-scrolling: touch; 
+            overflow-y: auto;
+        }
+
+        /* --- 以下為標準樣式 --- */
+
         :root { 
             --primary: #1d9bf0; --bg: #f0f2f5; --card: #ffffff; --text: #1f2937; 
             --sub-text: #6b7280; --border: #e5e7eb; --hover: #f3f4f6; 
@@ -28,17 +70,6 @@
             --ssr-gold: #fbbf24;
             --ssr-glow: rgba(251, 191, 36, 0.4);
         }
-                /* --- 新增：隱藏滾輪但保留滑動功能 --- */
-        ::-webkit-scrollbar {
-            width: 0px;  /* Chrome, Safari, Edge 隱藏滾輪寬度 */
-            background: transparent; /* 背景透明 */
-        }
-        html {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-        /* ------------------------------------- */
-
         html.dark-mode {
             --bg: #121212; --card: #1e1e1e; --text: #e5e7eb; --sub-text: #9ca3af; 
             --border: #374151; --hover: #27272a;
@@ -53,8 +84,6 @@
             --setting-group-bg: #27272a;
             --ext-header-bg: #0c4a6e; --ext-header-text: #bae6fd;
         }
-        html { min-height: 100%; background-color: var(--bg); overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
-        body { min-height: 100vh; margin: 0; padding: 0; background-color: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--text); -webkit-text-size-adjust: 100%; overflow-x: hidden; width: 100%; transition: background-color 0.3s, color 0.3s; }
 
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes simpleFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -556,7 +585,7 @@
     <div id="settings-modal" class="modal" onclick="closeSettings(event)">
         <div class="modal-content" id="settings-content-box" onclick="event.stopPropagation()">
             <div class="modal-header">
-                               <div class="modal-title">⚙️ 詳細設定</div>
+                <div class="modal-title">⚙️ 詳細設定</div>
                 <div class="close-x touch-feedback" onclick="closeSettings()">×</div>
             </div>
             <div class="tab-group">
@@ -1240,4 +1269,3 @@
     </script>
 </body>
 </html>
-
