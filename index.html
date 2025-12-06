@@ -4,21 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>紳士讚美產生器</title>
-    <meta name="description" content="專為紳士打造的讚美產生器，一鍵生成豐富的讚美語句。">
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        /* --- v6.0 GitHub 獨立版樣式 --- */
+        /* --- v5.5 Wix 專用捲動優化核心 --- */
         
-        /* 美化原生捲軸 (不再隱藏，而是讓它變好看) */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .dark-mode ::-webkit-scrollbar-thumb { background: #4b5563; }
-        .dark-mode ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        /* 1. 針對 Webkit 瀏覽器 (Chrome, Safari, Edge) 隱藏捲軸 */
+        ::-webkit-scrollbar {
+            display: none !important; /* 強制不顯示 */
+            width: 0px !important;
+            background: transparent !important;
+        }
+
+        /* 2. 針對 Firefox 與 IE/Edge 舊版隱藏捲軸 */
+        html, body {
+            scrollbar-width: none !important; /* Firefox */
+            -ms-overflow-style: none !important; /* IE/Edge */
+        }
+
+        /* 3. 關鍵：允許捲動傳遞 (Scroll Chaining) 與慣性捲動 */
+        html { 
+            min-height: 100%; 
+            background-color: var(--bg); 
+            /* 移除之前的 none，改為 auto 以允許捲動傳遞給 Wix 父頁面 */
+            overscroll-behavior-y: auto; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body { 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 0; 
+            background-color: var(--bg); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            color: var(--text); 
+            -webkit-text-size-adjust: 100%; 
+            overflow-x: hidden; 
+            width: 100%; 
+            transition: background-color 0.3s, color 0.3s;
+            /* 讓 iOS 滑動有慣性，不會卡卡的 */
+            -webkit-overflow-scrolling: touch; 
+            overflow-y: auto;
+        }
+
+        /* --- 以下為標準樣式 --- */
 
         :root { 
             --primary: #1d9bf0; --bg: #f0f2f5; --card: #ffffff; --text: #1f2937; 
@@ -36,7 +67,8 @@
             --setting-group-bg: #f3f4f6;
             --fs-jp: 0.9rem; --fs-cn: 0.8rem;
             --ext-header-bg: #e0f2fe; --ext-header-text: #0369a1;
-            --ssr-gold: #fbbf24; --ssr-glow: rgba(251, 191, 36, 0.4);
+            --ssr-gold: #fbbf24;
+            --ssr-glow: rgba(251, 191, 36, 0.4);
         }
         html.dark-mode {
             --bg: #121212; --card: #1e1e1e; --text: #e5e7eb; --sub-text: #9ca3af; 
@@ -53,207 +85,303 @@
             --ext-header-bg: #0c4a6e; --ext-header-text: #bae6fd;
         }
 
-        body { 
-            margin: 0; padding: 0; background-color: var(--bg); 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            color: var(--text); -webkit-text-size-adjust: 100%; overflow-x: hidden; 
-            transition: background-color 0.3s; -webkit-overflow-scrolling: touch;
-        }
-
-        /* 動畫定義 */
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes simpleFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
         @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
         @keyframes flyOut { to { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
         @keyframes popInDropdown { 0% { opacity: 0; transform: translate(-50%, -10px) scale(0.95); } 100% { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+        @keyframes glowPulse { 0% { filter: drop-shadow(0 0 5px var(--ssr-glow)); } 50% { filter: drop-shadow(0 0 15px var(--ssr-glow)); } 100% { filter: drop-shadow(0 0 5px var(--ssr-glow)); } }
 
-        /* 容器與佈局 */
-        .container { max-width: 900px; margin: 0 auto; background: var(--card); min-height: 100vh; padding: 16px 8px 40px 8px; box-sizing: border-box; display: flex; flex-direction: column; position: relative; }
-        @media (min-width: 600px) { body { padding: 20px; } .container { border-radius: 20px; min-height: auto; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08); padding: 30px 20px 30px 20px; } }
+        .container { max-width: 900px; margin: 0 auto; background: var(--card); min-height: 100vh; padding: 16px 8px 40px 8px; box-sizing: border-box; display: flex; flex-direction: column; transition: background-color 0.3s, box-shadow 0.3s; position: relative; }
+        @media (min-width: 600px) { body { padding: 20px; background-color: var(--bg); min-height: auto; } .container { border-radius: 20px; min-height: auto; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08); padding: 30px 20px 30px 20px; } }
         
-        /* 頂部標題列與書籤按鈕 */
         .header-row { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 15px; min-height: 40px; }
-        h1 { text-align: center; font-size: 1.1rem; margin: 0; color: var(--text); font-weight: 800; width: 100%; }
-        .bookmark-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--sub-text); padding: 5px; border-radius: 50%; transition: all 0.2s; }
-        .bookmark-btn:hover { background-color: var(--hover); color: var(--fav-color); }
-
-        /* 通用元件樣式 */
-        .section-title { font-size: 0.75rem; color: var(--sub-text); font-weight: 700; margin: 6px 0 2px 0; text-transform: uppercase; display: flex; align-items: center; }
-        .warning-text { font-size: 0.65rem; color: #9ca3af; margin-left: 6px; font-weight: normal; }
+        h1 { text-align: center; font-size: 1.1rem; margin: 0; color: var(--text); font-weight: 800; letter-spacing: -0.5px; width: 100%; }
         
-        .search-block { margin-bottom: 15px; padding: 12px; background-color: var(--section-bg); border-radius: 16px; border: 1px solid var(--border); }
+        .section-title { font-size: 0.75rem; color: var(--sub-text); font-weight: 700; margin: 6px 0 2px 0; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; flex-wrap: wrap; }
+        .warning-text { font-size: 0.65rem; color: #9ca3af; font-weight: normal; margin-left: 6px; letter-spacing: 0; line-height: 1.2; }
+        
+        .search-block { margin-bottom: 15px; padding: 12px; background-color: var(--section-bg); border-radius: 16px; border: 1px solid var(--border); box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
         .search-box { display: flex; gap: 8px; margin-bottom: 8px; }
-        .search-input { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.9rem; outline: none; background: var(--card); color: var(--text); }
-        .search-input:focus { border-color: var(--primary); }
-        .search-btn { width: 60px; background-color: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .search-input { flex: 1; padding: 10px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.9rem; outline: none; background: var(--card); color: var(--text); transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.15); }
+        .search-btn { width: 60px; background-color: var(--primary); color: white; border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
         
         .history-group { display: flex; gap: 8px; }
-        .history-btn { flex: 1; padding: 8px 0; background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--sub-text); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .history-btn { flex: 1; padding: 8px 0; background-color: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--sub-text); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s; touch-action: manipulation; }
         .history-btn:hover { background-color: var(--hover); }
 
-        /* 彈窗 (Modal) */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: var(--modal-overlay); backdrop-filter: blur(2px); animation: simpleFadeIn 0.2s; }
-        .modal-content { background-color: var(--modal-bg); margin: 0 auto; padding: 20px; border: 1px solid var(--border); border-radius: 16px; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; display: flex; flex-direction: column; max-height: 70vh; top: 15%; }
+        .modal-content { background-color: var(--modal-bg); margin: 0 auto; padding: 20px; border: 1px solid var(--border); border-radius: 16px; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; box-sizing: border-box; display: flex; flex-direction: column; max-height: 70vh; top: 15%; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .modal-title { font-weight: 700; font-size: 1rem; color: var(--text); }
-        .close-x { color: var(--sub-text); font-size: 1.5rem; cursor: pointer; padding: 0 5px; }
+        .close-x { color: var(--sub-text); font-size: 1.5rem; font-weight: bold; cursor: pointer; line-height: 1; padding: 0 5px; touch-action: manipulation; }
         .tab-group { display: flex; gap: 5px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
-        .tab-btn { flex: 1; padding: 8px; text-align: center; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--sub-text); border-radius: 8px; }
+        .tab-btn { flex: 1; padding: 8px; text-align: center; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--sub-text); border-radius: 8px; transition: all 0.2s; touch-action: manipulation; }
         .tab-btn.active { background-color: var(--hover); color: var(--text); }
         .history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px; }
-        .history-item { padding: 10px; background-color: var(--section-bg); border-radius: 8px; font-size: 0.85rem; color: var(--text); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .history-item { padding: 10px; background-color: var(--section-bg); border-radius: 8px; font-size: 0.85rem; color: var(--text); cursor: pointer; border: 1px solid transparent; transition: all 0.1s; word-break: break-all; display: flex; justify-content: space-between; align-items: center; touch-action: manipulation; }
         .history-text { flex: 1; margin-right: 10px; }
-        .delete-btn { color: var(--sub-text); padding: 4px 8px; cursor: pointer; }
-        .delete-btn:hover { color: var(--delete-color); }
+        .delete-btn { color: var(--sub-text); padding: 4px 8px; font-size: 1rem; cursor: pointer; border-radius: 4px; touch-action: manipulation; }
+        .delete-btn:hover { color: var(--delete-color); background-color: rgba(239, 68, 68, 0.1); }
         .history-empty { text-align: center; color: var(--sub-text); padding: 20px; font-size: 0.9rem; }
         .modal-footer { margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-        .close-btn-full { width: 100%; padding: 10px; background-color: var(--sub-text); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
-        .clear-btn { width: 100%; padding: 10px; background-color: transparent; color: var(--delete-color); border: 1px solid var(--delete-color); border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .close-btn-full { width: 100%; padding: 10px; background-color: var(--sub-text); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+        .clear-btn { width: 100%; padding: 10px; background-color: transparent; color: var(--delete-color); border: 1px solid var(--delete-color); border-radius: 10px; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+        .clear-btn:active { background-color: rgba(239, 68, 68, 0.1); }
 
-        /* 設定面板 */
         .setting-group { margin-bottom: 15px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-        .setting-group-header { background-color: var(--setting-group-bg); padding: 8px 12px; font-size: 0.8rem; font-weight: 700; color: var(--sub-text); text-transform: uppercase; }
+        .setting-group-header { background-color: var(--setting-group-bg); padding: 8px 12px; font-size: 0.8rem; font-weight: 700; color: var(--sub-text); text-transform: uppercase; letter-spacing: 0.5px; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); background: var(--card); }
         .setting-row:last-child { border-bottom: none; }
         .setting-label { font-size: 0.9rem; font-weight: 600; color: var(--text); }
         .setting-control { display: flex; align-items: center; gap: 10px; }
+        
         input[type=range] { -webkit-appearance: none; width: 100px; height: 6px; background: var(--border); border-radius: 5px; outline: none; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); cursor: pointer; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); cursor: pointer; }
+        
         .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--sub-text); transition: .4s; border-radius: 22px; }
         .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--primary); }
         input:checked + .slider:before { transform: translateX(18px); }
-        .font-btn { padding: 5px 10px; border: 1px solid var(--border); background: var(--card); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text); }
+
+        .font-btn { padding: 5px 10px; border: 1px solid var(--border); background: var(--card); border-radius: 6px; cursor: pointer; font-size: 0.8rem; color: var(--text); touch-action: manipulation; }
         .font-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
-        /* 表符與控制 */
+
         .emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 5px; }
-        .emoji-chip { padding: 6px 10px; background-color: var(--section-bg); border: 1px solid var(--border); border-radius: 8px; font-size: 1.2rem; cursor: pointer; user-select: none; }
+        .emoji-chip { padding: 6px 10px; background-color: var(--section-bg); border: 1px solid var(--border); border-radius: 8px; font-size: 1.2rem; cursor: pointer; user-select: none; transition: all 0.2s; touch-action: manipulation; }
         .emoji-chip:hover { background-color: var(--hover); }
         .emoji-chip.disabled { opacity: 0.3; filter: grayscale(100%); background-color: transparent; }
         .emoji-input-group { display: flex; gap: 5px; margin-bottom: 10px; }
         .emoji-input { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); }
-        .emoji-add-btn { padding: 8px 15px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .emoji-add-btn { padding: 8px 15px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; touch-action: manipulation; }
 
-        .control-group { display: flex; background: var(--section-bg); padding: 2px; border-radius: 8px; margin-bottom: 4px; gap: 2px; min-height: 28px; }
-        .control-option { flex: 1; text-align: center; padding: 6px 0; font-size: 0.75rem; cursor: pointer; border-radius: 6px; color: var(--sub-text); font-weight: 600; transition: all 0.2s ease; white-space: nowrap; overflow: hidden; }
+        .control-group { display: flex; background: var(--section-bg); padding: 2px; border-radius: 8px; margin-bottom: 4px; gap: 2px; border: 1px solid transparent; min-height: 28px; }
+        .control-option { flex: 1; text-align: center; padding: 6px 0; font-size: 0.75rem; cursor: pointer; border-radius: 6px; color: var(--sub-text); font-weight: 600; transition: all 0.2s ease; white-space: nowrap; overflow: hidden; touch-action: manipulation; }
         .control-option.active { background-color: var(--active-bg); color: var(--active-text); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .control-option[data-style="subtle"].active { background-color: var(--subtle-active-bg); color: var(--subtle-active-text); box-shadow: none; }
         .control-option[data-style="subtle"].strong-active.active { background-color: var(--active-bg) !important; color: var(--active-text) !important; }
         .control-group.disabled-group { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
         
-        /* 分類網格 */
         .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
-        @media (min-width: 600px) { .grid-container { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; } }
-        .category-btn { padding: 2px 2px; border: 1px solid var(--border); background: var(--card); border-radius: 8px; font-size: 0.85rem; cursor: pointer; text-align: center; font-weight: 500; color: var(--sub-text); user-select: none; display: flex; align-items: center; justify-content: center; min-height: 28px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all 0.2s ease; }
-        .category-btn.active { background-color: var(--active-bg); color: var(--active-text); font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .category-btn { padding: 2px 2px; border: 1px solid var(--border); background: var(--card); border-radius: 8px; font-size: 0.85rem; cursor: pointer; text-align: center; font-weight: 500; color: var(--sub-text); user-select: none; display: flex; align-items: center; justify-content: center; min-height: 28px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-tap-highlight-color: transparent; transition: all 0.2s ease; touch-action: manipulation; }
+        .category-btn.active { background-color: var(--active-bg); color: var(--active-text); border-color: var(--active-border); font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
         .category-btn.featured { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); color: #c2410c; border-color: #fdba74; }
         .dark-mode .category-btn.featured { background: linear-gradient(135deg, #431407 0%, #7c2d12 100%); color: #fdba74; border-color: #9a3412; }
+        
         .category-btn.special-star { font-size: 0.8rem; color: var(--fav-color); border: 1px dashed var(--fav-color); background-color: rgba(251, 191, 36, 0.05); font-weight: bold; opacity: 0.9; }
         .category-btn.special-star.active-star { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); color: #c2410c; border-color: #fdba74; border-style: solid; opacity: 1; }
+        .dark-mode .category-btn.special-star.active-star { background: linear-gradient(135deg, #431407 0%, #7c2d12 100%); color: #fdba74; border-color: #9a3412; }
         .category-btn.special-star.disabled { opacity: 0.3; pointer-events: none; filter: grayscale(100%); }
-        .skeleton { background: var(--skeleton-base); background-image: linear-gradient(to right, var(--skeleton-base) 0%, var(--skeleton-highlight) 20%, var(--skeleton-base) 40%, var(--skeleton-base) 100%); background-repeat: no-repeat; background-size: 800px 100%; animation: shimmer 1.5s infinite linear forwards; pointer-events: none; }
 
+        .skeleton { background: var(--skeleton-base); background-image: linear-gradient(to right, var(--skeleton-base) 0%, var(--skeleton-highlight) 20%, var(--skeleton-base) 40%, var(--skeleton-base) 100%); background-repeat: no-repeat; background-size: 800px 100%; animation: shimmer 1.5s infinite linear forwards; color: transparent !important; border-color: transparent !important; pointer-events: none; }
         .group-section { background-color: var(--section-bg); border-radius: 10px; padding: 4px; margin-top: 4px; min-height: 36px; border: 1px dashed var(--border); }
         .sub-placeholder { text-align: center; color: #9ca3af; font-size: 0.8rem; padding: 8px; width: 100%; }
         .click-hint { text-align: center; font-size: 0.75rem; color: var(--primary); margin: 20px 0 8px 0; font-weight: 600; opacity: 0.9; display: none; animation: simpleFadeIn 0.5s ease-out; }
         
-        /* 結果區域 */
         .result-area { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; min-height: 50px; }
-        .result-item { background-color: var(--result-bg); border: 1px solid var(--result-border); border-radius: 10px; cursor: pointer; position: relative; display: flex; overflow: hidden; user-select: none; box-shadow: 0 1px 3px rgba(0,0,0,0.02); min-height: 44px; transition: background-color 0.1s, transform 0.1s; opacity: 0; }
+        .result-item { background-color: var(--result-bg); border: 1px solid var(--result-border); border-radius: 10px; cursor: pointer; position: relative; display: flex; overflow: hidden; -webkit-user-select: none; user-select: none; box-shadow: 0 1px 3px rgba(0,0,0,0.02); min-height: 44px; transition: background-color 0.1s, transform 0.1s, box-shadow 0.2s; opacity: 0; touch-action: manipulation; }
         .result-item.animate-in { animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         .result-item.fade-in { animation: simpleFadeIn 0.2s ease-out forwards; }
         .result-item.clicked { background-color: #eff6ff; border-color: var(--primary); }
-        .dark-mode .result-item.clicked { background-color: #374151; border-color: var(--primary); }
+        @media (prefers-color-scheme: dark) { .result-item.clicked { background-color: #374151; border-color: var(--primary); } }
         
-        .result-left { flex: 1; padding: 6px 10px; font-size: var(--fs-jp); line-height: 1.3; color: var(--text); word-break: break-all; display: flex; align-items: center; font-weight: 500; flex-wrap: wrap; }
+        .result-left { flex: 1; padding: 6px 10px; font-size: var(--fs-jp); line-height: 1.3; color: var(--text); word-break: break-all; display: flex; align-items: center; font-weight: 500; flex-wrap: wrap; transition: transform 0.1s; }
+        
         .result-actions { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; padding: 2px 4px; width: 24px; background-color: var(--result-bg); border-left: 1px solid var(--result-border); }
-        @media (min-width: 600px) { .result-actions { flex-direction: row; width: auto; padding: 0 8px; gap: 8px; } .result-left { font-size: calc(var(--fs-jp) + 0.2rem); } .result-right { width: 200px; font-size: calc(var(--fs-cn) + 0.2rem); } }
-        .action-icon { font-size: 0.9rem; padding: 4px; border-radius: 4px; cursor: pointer; opacity: 0.6; transition: all 0.2s; }
+        .action-icon { font-size: 0.9rem; padding: 4px; border-radius: 4px; cursor: pointer; opacity: 0.6; transition: all 0.2s; touch-action: manipulation; }
         .action-icon:hover { opacity: 1; background-color: var(--hover); }
         .icon-speak:hover { color: var(--speak-color); }
         .icon-star.active { color: var(--fav-color); opacity: 1; }
-        .result-right { width: 80px; flex-shrink: 0; background-color: var(--result-right-bg); padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: var(--fs-cn); color: var(--result-right-text); border-left: 1px solid var(--result-border); font-weight: 500; line-height: 1.2; }
+        .icon-star:hover { color: var(--fav-color); }
+        
+        .result-right { width: 80px; flex-shrink: 0; background-color: var(--result-right-bg); padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: var(--fs-cn); color: var(--result-right-text); border-left: 1px solid var(--result-border); font-weight: 500; line-height: 1.2; flex-wrap: wrap; }
         .hide-cn .result-right { display: none; }
         .hide-speak .icon-speak { display: none; }
-        .emo-segment { color: var(--emo-text); background-color: var(--emo-bg); border: 1px solid var(--emo-border); padding: 1px 6px; border-radius: 6px; font-weight: 700; margin: 0 8px; font-size: 0.85em; display: inline-block; }
 
+        .emo-segment { color: var(--emo-text); background-color: var(--emo-bg); border: 1px solid var(--emo-border); padding: 1px 6px; border-radius: 6px; font-weight: 700; margin: 0 8px; font-size: 0.85em; display: inline-block; }
+        .emo-segment:first-child { margin-left: 0; margin-right: 8px; }
+        .emo-segment:last-child { margin-left: 8px; margin-right: 0; }
+        
         .particle { pointer-events: none; position: fixed; font-size: 1.2rem; animation: flyOut 0.8s forwards; z-index: 9999; }
+
+        @media (min-width: 600px) { .grid-container { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; } .category-btn { font-size: 0.9rem; padding: 4px 2px; min-height: 28px; } .result-left { font-size: calc(var(--fs-jp) + 0.2rem); } .result-right { width: 200px; font-size: calc(var(--fs-cn) + 0.2rem); } .result-actions { flex-direction: row; width: auto; padding: 0 8px; gap: 8px; } .action-icon { font-size: 1.1rem; } }
         
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .action-btn { width: 100%; padding: 12px 0; border-radius: 50px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.1s; user-select: none; }
-        .btn-regen { background-color: var(--btn-regen); }
-        .btn-emoji { background-color: var(--btn-emoji); }
-        .btn-emotion { background-color: var(--btn-emotion); }
-        .btn-gacha { background: linear-gradient(45deg, #FFD700, #FF8C00, #FF0080, #4169E1); background-size: 200% 200%; border: 2px solid #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .action-btn { width: 100%; padding: 12px 0; border-radius: 50px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.1s, background-color 0.2s, box-shadow 0.2s; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation; }
+        .btn-regen { background-color: var(--btn-regen); box-shadow: 0 4px 12px rgba(29, 155, 240, 0.25); }
+        .btn-emoji { background-color: var(--btn-emoji); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); }
+        .btn-emotion { background-color: var(--btn-emotion); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25); }
+        
+        .btn-gacha { background: linear-gradient(45deg, #FFD700, #FF8C00, #FF0080, #4169E1); background-size: 200% 200%; color: white; font-weight: 800; border: 2px solid #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
         .action-btn.disabled { background-color: var(--border); color: var(--sub-text); cursor: not-allowed; pointer-events: none; box-shadow: none; }
 
-        /* 廣告與頁腳 */
-        .ad-section { margin-top: 20px; padding: 12px 10px; background: linear-gradient(to bottom, var(--ad-bg-start), var(--ad-bg-end)); border: 1px solid var(--border); border-radius: 16px; text-align: center; }
-        .ad-title-deco { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 0.75rem; margin-bottom: 6px; text-transform: uppercase; }
+        .ad-section { margin-top: 20px; padding: 12px 10px; background: linear-gradient(to bottom, var(--ad-bg-start), var(--ad-bg-end)); border: 1px solid var(--border); border-radius: 16px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); }
+        .ad-title-deco { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 0.75rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .ad-title-deco::before, .ad-title-deco::after { content: ""; height: 1px; width: 20px; background-color: var(--border); }
-        .ad-wrapper { display: inline-block; max-width: 100%; overflow-x: auto; min-height: 100px; white-space: nowrap; padding-bottom: 5px; }
-        .promo-banner img { max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
-        .footer { margin-top: 25px; padding-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .ad-wrapper { display: inline-block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: 100px; white-space: nowrap; scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 5px; }
+        .ad-wrapper::-webkit-scrollbar { display: none; }
+        .promo-banner { margin-top: 4px; display: flex; justify-content: center; }
+        .promo-banner img { max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.08); transition: transform 0.2s; }
+        .promo-banner img:active { transform: scale(0.98); }
+        .footer { margin-top: 25px; padding-top: 15px; border-top: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .footer-links { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
         .footer-link { text-decoration: none; color: var(--text); background-color: var(--hover); padding: 6px 14px; border-radius: 50px; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 4px; }
         .footer-link:hover { background-color: var(--border); transform: translateY(-1px); }
         .copyright { font-size: 0.7rem; color: #9ca3af; margin-bottom: 10px; }
-        
-        .toast { visibility: hidden; min-width: 120px; background-color: rgba(17, 24, 39, 0.9); color: #fff; text-align: center; border-radius: 50px; padding: 8px 16px; position: fixed; z-index: 10000; left: 50%; bottom: 20px; transform: translateX(-50%); font-size: 0.85rem; opacity: 0; transition: opacity 0.2s; font-weight: 600; pointer-events: none; }
+        .toast { visibility: hidden; min-width: 120px; background-color: rgba(17, 24, 39, 0.9); color: #fff; text-align: center; border-radius: 50px; padding: 8px 16px; position: fixed; z-index: 10000; left: 50%; bottom: 20px; transform: translateX(-50%); font-size: 0.85rem; opacity: 0; transition: opacity 0.2s; font-weight: 600; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .toast.show { visibility: visible; opacity: 1; }
         .loading { text-align: center; padding: 10px; color: var(--sub-text); font-weight: bold; font-size: 0.8rem; }
 
-        /* 擴充功能 UI */
+        /* --- New Extension UI Styles --- */
         .extension-box { margin-top: 20px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--section-bg); }
         .extension-header-main { background: var(--ext-header-bg); color: var(--ext-header-text); padding: 10px 15px; font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); }
         .extension-card { background: var(--card); border-bottom: 1px solid var(--border); }
         .extension-card:last-child { border-bottom: none; }
-        .extension-toggle { width: 100%; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; background: none; border: none; color: var(--text); font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+        .extension-toggle { width: 100%; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; background: none; border: none; color: var(--text); font-weight: 700; font-size: 0.85rem; cursor: pointer; text-align: left; touch-action: manipulation; }
+        .extension-toggle:active { background-color: var(--hover); }
         .extension-toggle .arrow { transition: transform 0.3s ease; font-size: 0.8rem; opacity: 0.5; }
         .extension-toggle.active .arrow { transform: rotate(180deg); opacity: 1; color: var(--primary); }
         .extension-body { display: none; padding: 15px; border-top: 1px solid var(--border); animation: simpleFadeIn 0.3s ease; }
         .extension-body.show { display: block; }
 
-        /* 長文模式 */
+        /* Review Builder Styles */
         .builder-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .builder-hint { font-size: 0.75rem; color: var(--primary); font-weight: bold; }
         .builder-actions { display: flex; gap: 6px; }
-        .action-btn-small { padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--sub-text); font-weight: 600; cursor: pointer; }
+        .action-btn-small { padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--sub-text); font-weight: 600; cursor: pointer; touch-action: manipulation; }
         .builder-textarea { width: 100%; height: 120px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.9rem; line-height: 1.5; resize: vertical; box-sizing: border-box; font-family: inherit; margin-bottom: 5px; }
         .builder-textarea:focus { border-color: var(--primary); outline: none; }
 
-        /* 每日運勢卡片 */
+        /* Welcome Modal & Daily Gacha Styles - v5.3 Overhaul */
         #welcome-modal { display: none; position: fixed; z-index: 6000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); animation: simpleFadeIn 0.3s; }
-        .welcome-content { background: var(--card); border-radius: 20px; padding: 0; text-align: center; width: 85%; max-width: 320px; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.5); overflow: hidden; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: popInDropdown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        .welcome-card-inner { padding: 25px 20px 30px 20px; background: linear-gradient(135deg, var(--card) 0%, var(--section-bg) 100%); position: relative; display: flex; flex-direction: column; align-items: center; }
-        .welcome-card-inner::before, .welcome-card-inner::after { content: ""; position: absolute; height: 2px; width: 40px; background: var(--border); top: 60px; }
-        .welcome-card-inner::before { left: 20px; } .welcome-card-inner::after { right: 20px; }
-        .welcome-header-pill { background: var(--primary); color: white; padding: 6px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: 800; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(29, 155, 240, 0.3); letter-spacing: 1px; z-index: 2; }
+        
+        .welcome-content { 
+            background: var(--card); 
+            border-radius: 20px; 
+            padding: 0; 
+            text-align: center; 
+            width: 85%; 
+            max-width: 320px; 
+            border: 1px solid var(--border); 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+            overflow: hidden;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transform-origin: top center;
+            animation: popInDropdown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .welcome-card-inner { 
+            padding: 25px 20px 30px 20px; 
+            background: linear-gradient(135deg, var(--card) 0%, var(--section-bg) 100%);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        /* Decorative lines for SSR feel */
+        .welcome-card-inner::before, .welcome-card-inner::after {
+            content: ""; position: absolute; height: 2px; width: 40px; background: var(--border); top: 60px;
+        }
+        .welcome-card-inner::before { left: 20px; }
+        .welcome-card-inner::after { right: 20px; }
+
+        .welcome-header-pill {
+            background: var(--primary);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 10px rgba(29, 155, 240, 0.3);
+            letter-spacing: 1px;
+            z-index: 2;
+        }
+
         .modal-date { font-size: 0.75rem; color: var(--sub-text); margin-bottom: 20px; font-weight: 600; letter-spacing: 1px; opacity: 0.8; }
-        .welcome-emoji { font-size: 4rem; margin-bottom: 15px; animation: shake 3s infinite; display: inline-block; filter: drop-shadow(0 0 15px var(--ssr-glow)); }
+        
+        .welcome-body { position: relative; width: 100%; }
+        .welcome-emoji { 
+            font-size: 4rem; 
+            margin-bottom: 15px; 
+            animation: shake 3s infinite; 
+            display: inline-block; 
+            filter: drop-shadow(0 0 15px var(--ssr-glow));
+        }
         .welcome-text { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 8px; line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .welcome-sub { font-size: 0.85rem; color: var(--sub-text); font-weight: 500; }
+        
         .welcome-actions { display: flex; gap: 10px; padding: 15px 20px; background: var(--section-bg); border-top: 1px solid var(--border); }
-        .welcome-btn { flex: 1; padding: 12px; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; transition: transform 0.1s; }
+        .welcome-btn { flex: 1; padding: 12px; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; touch-action: manipulation; transition: transform 0.1s; }
         .btn-dl-img { background: var(--card); color: var(--text); border: 1px solid var(--border); }
         .btn-copy-txt { background: var(--card); color: var(--text); border: 1px solid var(--border); }
         .btn-start { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(29, 155, 240, 0.3); flex: 1.5; }
 
-        .help-banner { background: linear-gradient(to right, var(--ext-header-bg), var(--section-bg)); color: var(--ext-header-text); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; border: 1px solid var(--border); gap: 8px; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
-        
-        /* 觸摸反饋 */
-        .pressed { transform: scale(0.95) !important; filter: brightness(0.95) !important; transition: none !important; }
+        /* Settings Help Banner */
+        .help-banner {
+            background: linear-gradient(to right, var(--ext-header-bg), var(--section-bg));
+            color: var(--ext-header-text);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            gap: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        }
+        .help-banner:active { transform: scale(0.98); filter: brightness(0.95); }
+
+        /* --- Unified Active State Logic --- */
+        .category-btn:active, .category-btn.pressed,
+        .action-btn:active, .action-btn.pressed,
+        .result-item:active, .result-item.pressed,
+        .control-option:active, .control-option.pressed,
+        .history-btn:active, .history-btn.pressed,
+        .search-btn:active, .search-btn.pressed,
+        .extension-toggle:active, .extension-toggle.pressed,
+        .welcome-btn:active, .welcome-btn.pressed,
+        .font-btn:active, .font-btn.pressed,
+        .emoji-chip:active, .emoji-chip.pressed,
+        .emoji-add-btn:active, .emoji-add-btn.pressed,
+        .close-x:active, .close-x.pressed,
+        .tab-btn:active, .tab-btn.pressed,
+        .delete-btn:active, .delete-btn.pressed,
+        .close-btn-full:active, .close-btn-full.pressed,
+        .clear-btn:active, .clear-btn.pressed,
+        .help-banner:active, .help-banner.pressed,
+        .action-btn-small:active, .action-btn-small.pressed,
+        .history-item:active, .history-item.pressed {
+            transform: scale(0.95) !important;
+            filter: brightness(0.95) !important;
+            background-color: var(--hover) !important;
+            transition: none !important;
+        }
+
+        /* Specific color overrides */
+        .btn-regen:active, .btn-regen.pressed { background-color: #15803d !important; filter: brightness(0.9) !important; }
+        .btn-emoji:active, .btn-emoji.pressed { background-color: #059669 !important; filter: brightness(0.9) !important; }
+        .btn-emotion:active, .btn-emotion.pressed { background-color: #7c3aed !important; filter: brightness(0.9) !important; }
+        .search-btn:active, .search-btn.pressed { background-color: #1d9bf0 !important; filter: brightness(0.9) !important; }
+        .btn-start:active, .btn-start.pressed { background-color: #1d9bf0 !important; filter: brightness(0.9) !important; }
+
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header-row">
             <h1>💬 紳士讚美產生器</h1>
-            <button class="bookmark-btn touch-feedback" onclick="addToBookmark()" title="加入書籤">🔖</button>
         </div>
 
         <div class="search-block">
@@ -296,8 +424,11 @@
             <div id="random-btn" class="action-btn btn-gacha touch-feedback" onclick="randomAll(event)">🎲 全隨機 (SSR?)</div>
         </div>
 
+        <!-- Integrated Extensions Section -->
         <div class="extension-box">
             <div class="extension-header-main">🧩 擴充功能中心</div>
+            
+            <!-- Review Builder Card -->
             <div class="extension-card">
                 <button class="extension-toggle touch-feedback" onclick="toggleExtension('builder', this)">
                     <span>📝 長篇大論模式</span>
@@ -315,6 +446,8 @@
                     <textarea id="builder-input" class="builder-textarea" placeholder="點擊下方的句子來組合成一篇文章..."></textarea>
                 </div>
             </div>
+
+            <!-- Emotion Mode Card -->
             <div class="extension-card">
                 <button class="extension-toggle touch-feedback" onclick="toggleExtension('emotion', this)">
                     <span>🎭 誇張化情緒</span>
@@ -362,6 +495,7 @@
 
     <div id="toast" class="toast">✅ 已複製內容！</div>
 
+    <!-- Daily Gacha Modal (v5.3 Redesign) -->
     <div id="welcome-modal" onclick="closeWelcomeModal()">
         <div class="welcome-content" onclick="event.stopPropagation()">
             <div id="capture-target" class="welcome-card-inner">
@@ -406,11 +540,40 @@
                 <div class="close-x touch-feedback" onclick="closeTutorial()">×</div>
             </div>
             <div style="flex: 1; overflow-y: auto;">
-                <div class="tutorial-content" style="padding: 5px;">
-                    <p>1. 選擇「主分類」與「細項」生成句子。</p>
-                    <p>2. 點擊句子即可複製。</p>
-                    <p>3. 點擊右上角「⚙️」可設定深色模式、發音、字體大小。</p>
-                    <p>4. 支援 PWA，可加入手機主畫面當作 App 使用。</p>
+                <div class="tutorial-content">
+                    <div class="tutorial-block">
+                        <h3>🚀 1. 快速上手</h3>
+                        <p>操作非常直覺！先選擇「📂 主分類」，再點擊下方的「📑 細項」，系統就會自動生成多組讚美短句。<strong>點擊任一句子即可複製</strong>。</p>
+                    </div>
+                    <div class="tutorial-block">
+                        <h3>⭐ 2. 精選與收藏</h3>
+                        <ul>
+                            <li><strong>精選細項</strong>：在細項列表中，點擊第一顆「⭐ 加入精選」按鈕，可將該分類加入「精選細項」分頁，方便日後快速存取。</li>
+                            <li><strong>單句收藏</strong>：生成結果右側的星星圖示，可將單一句子收藏至「我的最愛」。</li>
+                        </ul>
+                    </div>
+                    <div class="tutorial-block">
+                        <h3>🧩 3. 擴充功能中心</h3>
+                        <p>點擊「🧩 擴充功能中心」可展開進階功能：</p>
+                        <ul>
+                            <li><strong>📝 長篇大論模式</strong>：開啟後，點擊句子不會直接複製，而是<strong>追加到暫存框</strong>，讓您能組合多個短句成一篇長文評論。</li>
+                            <li><strong>🎭 誇張化情緒</strong>：開啟後，會在句子前後加上額外的感嘆詞（如「太神了！」「受不了！」），增加語氣強度。</li>
+                        </ul>
+                    </div>
+                    <div class="tutorial-block">
+                        <h3>🙂 4. 表情符號自訂</h3>
+                        <p>您可以自由切換表情符號的風格：</p>
+                        <ul>
+                            <li><strong>臉+♡</strong>：隨機臉部表符加上愛心裝飾（預設）。</li>
+                            <li><strong>顏文字</strong>：使用日系顏文字 (如 <code>(≧∇≦)</code>)。</li>
+                            <li><strong>驚嘆號</strong>：僅使用驚嘆號，適合嚴肅場合。</li>
+                            <li><strong>混合/自訂</strong>：隨機組合或在設定中自訂數量。</li>
+                        </ul>
+                    </div>
+                    <div class="tutorial-block">
+                        <h3>🔍 5. 搜尋功能</h3>
+                        <p>在頂部的搜尋框輸入關鍵字（如「腿」、「胸」），按下搜尋即可快速找到相關的讚美語句。</p>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -433,12 +596,18 @@
             </div>
             
             <div id="panel-general" style="flex: 1; overflow-y: auto; padding-right: 5px;">
-                <div class="help-banner touch-feedback" onclick="openTutorial()"><span>📖</span> 點我看完整使用教學</div>
+                <div class="help-banner touch-feedback" onclick="openTutorial()">
+                    <span>📖</span> 點我看完整使用教學
+                </div>
+                
                 <div class="setting-group">
                     <div class="setting-group-header">👀 顯示與外觀</div>
                     <div class="setting-row">
                         <div class="setting-label">深色模式</div>
-                        <label class="switch"><input type="checkbox" id="toggle-dark" onchange="setDarkMode(this.checked)"><span class="slider"></span></label>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-dark" onchange="setDarkMode(this.checked)">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                     <div class="setting-row">
                         <div class="setting-label">字體大小</div>
@@ -449,67 +618,89 @@
                         </div>
                     </div>
                     <div class="setting-row">
-                        <div class="setting-label">數量 (<span id="count-display">8</span>)</div>
-                        <div class="setting-control"><input type="range" min="1" max="12" value="8" id="count-slider" oninput="updateResultCount(this.value)"></div>
+                        <div class="setting-label">一次生成數量 (<span id="count-display">8</span>)</div>
+                        <div class="setting-control">
+                            <input type="range" min="1" max="12" value="8" id="count-slider" oninput="updateResultCount(this.value)">
+                        </div>
                     </div>
                     <div class="setting-row">
-                        <div class="setting-label">顯示中文</div>
-                        <label class="switch"><input type="checkbox" id="toggle-cn" checked onchange="toggleSetting('showCN', this.checked)"><span class="slider"></span></label>
+                        <div class="setting-label">顯示中文翻譯</div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-cn" checked onchange="toggleSetting('showCN', this.checked)">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
+
                 <div class="setting-group">
-                    <div class="setting-group-header">🗣️ 語音設定</div>
+                    <div class="setting-group-header">🗣️ 語音設定 (TTS)</div>
                     <div class="setting-row">
-                        <div class="setting-label">發聲按鈕</div>
-                        <label class="switch"><input type="checkbox" id="toggle-speak" checked onchange="toggleSetting('showSpeak', this.checked)"><span class="slider"></span></label>
+                        <div class="setting-label">顯示發聲按鈕</div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-speak" checked onchange="toggleSetting('showSpeak', this.checked)">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                     <div class="setting-row">
-                        <div class="setting-label">語速</div>
-                        <div class="setting-control"><input type="range" min="0.5" max="1.5" step="0.1" value="1.1" id="rate-slider" oninput="updateVoiceSetting('rate', this.value)"></div>
+                        <div class="setting-label">語速 (Speed)</div>
+                        <div class="setting-control">
+                            <input type="range" min="0.5" max="1.5" step="0.1" value="1.1" id="rate-slider" oninput="updateVoiceSetting('rate', this.value)">
+                        </div>
                     </div>
                     <div class="setting-row">
-                        <div class="setting-label">音調</div>
-                        <div class="setting-control"><input type="range" min="0.5" max="1.5" step="0.1" value="1.0" id="pitch-slider" oninput="updateVoiceSetting('pitch', this.value)"></div>
+                        <div class="setting-label">音調 (Pitch)</div>
+                        <div class="setting-control">
+                            <input type="range" min="0.5" max="1.5" step="0.1" value="1.0" id="pitch-slider" oninput="updateVoiceSetting('pitch', this.value)">
+                        </div>
                     </div>
                     <div class="setting-row" style="justify-content: center;">
-                        <button class="font-btn touch-feedback" onclick="testVoice()">🔊 試聽</button>
+                        <button class="font-btn touch-feedback" onclick="testVoice()">🔊 試聽語音</button>
                     </div>
                 </div>
+
                 <div class="setting-group">
                     <div class="setting-group-header">💾 資料管理</div>
                     <div class="setting-row" style="justify-content: space-around;">
-                        <button class="font-btn touch-feedback" onclick="exportSettings()">📤 匯出</button>
-                        <button class="font-btn touch-feedback" onclick="document.getElementById('import-file').click()">📥 匯入</button>
+                        <button class="font-btn touch-feedback" onclick="exportSettings()">📤 匯出設定</button>
+                        <button class="font-btn touch-feedback" onclick="document.getElementById('import-file').click()">📥 匯入設定</button>
                         <input type="file" id="import-file" style="display:none" accept=".json" onchange="importSettings(this)">
                     </div>
                     <div class="setting-row" style="justify-content:center; border-bottom:none;">
-                        <button class="clear-btn touch-feedback" onclick="resetAllData()">🗑️ 清除資料</button>
+                        <button class="clear-btn touch-feedback" onclick="resetAllData()">🗑️ 清除所有資料 (重置)</button>
                     </div>
                 </div>
             </div>
 
             <div id="panel-emoji" style="flex: 1; overflow-y: auto; display:none;">
                 <div class="emoji-input-group">
-                    <input type="text" id="new-emoji-input" class="emoji-input" placeholder="輸入新表符...">
+                    <input type="text" id="new-emoji-input" class="emoji-input" placeholder="貼上或輸入新表符...">
                     <button class="emoji-add-btn touch-feedback" onclick="addNewEmoji()">新增</button>
                 </div>
-                <div class="section-title" style="margin-bottom: 8px;">點擊以停用/啟用</div>
+                <div class="section-title" style="margin-bottom: 8px;">點擊以停用/啟用 (灰色為停用)</div>
                 <div id="emoji-grid" class="emoji-grid"></div>
             </div>
 
             <div id="panel-custom" style="flex: 1; overflow-y: auto; display:none;">
-                <div class="section-title" style="margin-top:0;">🎨 自訂數量</div>
+                <div class="section-title" style="margin-top:0;">🎨 自訂表符數量</div>
                 <div class="setting-row">
-                    <div class="setting-label">最少 (<span id="min-custom-display">3</span>)</div>
-                    <div class="setting-control"><input type="range" min="1" max="10" value="3" id="min-custom-slider" oninput="updateCustomMix('min', this.value)"></div>
+                    <div class="setting-label">最少幾個？ (<span id="min-custom-display">3</span>)</div>
+                    <div class="setting-control">
+                        <input type="range" min="1" max="10" value="3" id="min-custom-slider" oninput="updateCustomMix('min', this.value)">
+                    </div>
                 </div>
                 <div class="setting-row">
-                    <div class="setting-label">最多 (<span id="max-custom-display">5</span>)</div>
-                    <div class="setting-control"><input type="range" min="1" max="10" value="5" id="max-custom-slider" oninput="updateCustomMix('max', this.value)"></div>
+                    <div class="setting-label">最多幾個？ (<span id="max-custom-display">5</span>)</div>
+                    <div class="setting-control">
+                        <input type="range" min="1" max="10" value="5" id="max-custom-slider" oninput="updateCustomMix('max', this.value)">
+                    </div>
+                </div>
+                <div style="padding:10px; font-size:0.8rem; color:var(--sub-text); line-height:1.4;">
+                    💡 說明：這裡決定數量，表符樣式則來自「🙂 臉部」與「✨ 裝飾」分頁。
                 </div>
             </div>
+
             <div class="modal-footer">
-                <button class="close-btn-full touch-feedback" onclick="closeSettings()">關閉</button>
+                <button class="close-btn-full touch-feedback" onclick="closeSettings()">關閉設定</button>
             </div>
         </div>
     </div>
@@ -523,20 +714,37 @@
         const defaultDecor = ["❤️", "🧡", "💛", "💙", "💜", "🤍", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "❤️‍🔥", "🫶", "✨", "🌟", "💫", "💥", "💢",  "📸", "💎", "🔥", "💦", "🔞", "💋", "👅", "👙", "👠", "🎀", "🥀", "🌹", "🩸", "👃", "🦵", "🍑", "🍼", "🙏", "🙇", "🙌", "👐", "🫶", "👌", "👈", "👉", "👆", "👇", "👍", "🛐", "🤝", "💪"];
         const punctuations = ["…", "…！", "…！！", "！", "！！", "！！！"];
         
-        let database = {}, emotionPhrases = [], kaomojiList = [], emotionSource = 'sheet2';
+        let database = {};
+        let emotionPhrases = [];
+        let kaomojiList = [];
+        let emotionSource = 'sheet2'; 
+        
         const mainGrid = document.getElementById('main-grid'), subGrid = document.getElementById('sub-grid'), resultArea = document.getElementById('result-area'), toast = document.getElementById('toast'), loadingMsg = document.getElementById('loading-msg');
         const regenBtn = document.getElementById('regen-btn'), emojiBtn = document.getElementById('emoji-btn'), emotionBtn = document.getElementById('emotion-btn'), randomBtn = document.getElementById('random-btn');
         const clickHint = document.getElementById('click-hint'), searchInput = document.getElementById('search-input');
         
         let currentMain = null, currentSub = null, emojiLevel = 3, emotionMode = 0, currentDisplayState = [], seenIndices = new Set(), historyLog = [];
         let favorites = [], currentTab = 'history', isGachaPlaying = false;
-        let appSettings = { fontSize: 1, resultCount: 8, showCN: true, showSpeak: true, customMin: 3, customMax: 5, voiceRate: 1.1, voicePitch: 1.0 };
+        
+        let appSettings = {
+            fontSize: 1, resultCount: 8, showCN: true, showSpeak: true, customMin: 3, customMax: 5, voiceRate: 1.1, voicePitch: 1.0, copyAction: 'none'
+        };
+        
         let activeFaces = [], activeDecor = [], disabledFaces = [], disabledDecor = [], savedSubCategories = [], currentSettingsTab = 'general';
-        let isBuilderMode = false, currentSearchMatches = [];
+        let isBuilderMode = false;
 
         async function init() {
-            initTouchFeedback(); initDarkMode(); loadHistory(); loadFavorites(); loadSettings(); showSkeletonLoading(); applySettingsUI();
-            try { await Promise.all([fetchWithRetry(SHEET_CSV_URL, 'mainDB'), fetchWithRetry(EMOTION_SHEET_CSV_URL, 'emotionDB'), fetchWithRetry(KAOMOJI_SHEET_CSV_URL, 'kaomojiDB')]); } catch(e) {}
+            initTouchFeedback();
+            initDarkMode(); loadHistory(); loadFavorites(); loadSettings(); showSkeletonLoading(); applySettingsUI();
+            
+            try {
+                await Promise.all([
+                    fetchWithRetry(SHEET_CSV_URL, 'mainDB'),
+                    fetchWithRetry(EMOTION_SHEET_CSV_URL, 'emotionDB'),
+                    fetchWithRetry(KAOMOJI_SHEET_CSV_URL, 'kaomojiDB')
+                ]);
+            } catch(e) { console.error("Fetch failed, using cache"); }
+            
             parseMainData(); parseEmotionData(); parseKaomojiData();
             loadingMsg.style.display = 'none'; renderMainCategories();
             
@@ -552,99 +760,204 @@
                 }
             }
             searchInput.addEventListener("keypress", function(event) { if (event.key === "Enter") searchPhrases(); });
-            updateActionButtonsState(); updateSourceRowVisuals();
+            updateActionButtonsState(); updateSourceRowVisuals(); 
+            
+            // Always show welcome modal on init
             setTimeout(() => showWelcomeModal(), 500);
         }
 
-        function stripEmojis(str) { return str ? str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').replace(/\s+/g, ' ').trim() : ""; }
+        function stripEmojis(str) {
+            if (!str) return "";
+            return str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '')
+                      .replace(/\s+/g, ' ').trim();
+        }
+
         async function fetchWithRetry(url, storageKey, retries = 3) {
             for (let i = 0; i < retries; i++) {
-                try { const response = await fetch(url); if (!response.ok) throw new Error(); const text = await response.text(); localStorage.setItem(storageKey, text); return text; } 
-                catch (err) { if (i === retries - 1) { const cached = localStorage.getItem(storageKey); if (cached) return cached; throw err; } await new Promise(res => setTimeout(res, 1000)); }
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const text = await response.text();
+                    localStorage.setItem(storageKey, text);
+                    return text;
+                } catch (err) {
+                    if (i === retries - 1) {
+                        const cached = localStorage.getItem(storageKey);
+                        if (cached) return cached;
+                        throw err;
+                    }
+                    await new Promise(res => setTimeout(res, 1000));
+                }
             }
         }
 
         function parseMainData() {
             const text = localStorage.getItem('mainDB'); if (!text) return;
-            text.split(/\r?\n/).slice(1).forEach(row => {
-                if (!row.trim()) return; const cols = row.split(','); if (cols.length < 4) return;
-                const mainKey = cols[0].trim(), subKey = cols[1].trim(), jpText = stripEmojis(cols[2]), cnText = stripEmojis(cols[3]);
+            const rows = text.split(/\r?\n/).slice(1);
+            const cleanStr = (str) => str ? str.trim().replace(/^"|"$/g, '').trim() : '';
+            rows.forEach(row => {
+                if (!row.trim()) return;
+                const cols = row.split(',');
+                if (cols.length < 4) return;
+                const mainKey = cleanStr(cols[0]), subKey = cleanStr(cols[1]);
+                const jpText = stripEmojis(cleanStr(cols[2]));
+                const cnText = stripEmojis(cleanStr(cols[3]));
+                
                 if (!mainKey || !subKey) return;
                 if (!database[mainKey]) database[mainKey] = { label: mainKey, subs: {} };
                 if (!database[mainKey].subs[subKey]) database[mainKey].subs[subKey] = { label: subKey, phrases: [] };
                 if (jpText) database[mainKey].subs[subKey].phrases.push({ jp: jpText, cn: cnText });
             });
         }
+
         function parseEmotionData() {
             const text = localStorage.getItem('emotionDB'); if (!text) return;
-            text.split(/\r?\n/).slice(1).forEach(row => { const cols = row.split(','); if (cols.length < 2) return; const jp = stripEmojis(cols[0]), cn = stripEmojis(cols[1]); if (jp) emotionPhrases.push({ jp, cn }); });
+            const rows = text.split(/\r?\n/).slice(1);
+            const cleanStr = (str) => str ? str.trim().replace(/^"|"$/g, '').trim() : '';
+            rows.forEach(row => {
+                if (!row.trim()) return;
+                const cols = row.split(',');
+                if (cols.length < 2) return;
+                const jpText = stripEmojis(cleanStr(cols[0]));
+                const cnText = stripEmojis(cleanStr(cols[1]));
+                if (jpText) emotionPhrases.push({ jp: jpText, cn: cnText });
+            });
         }
+
         function parseKaomojiData() {
             const text = localStorage.getItem('kaomojiDB'); if (!text) return;
-            text.split(/\r?\n/).slice(1).forEach(row => { const k = row.split(',')[0].trim(); if (k) kaomojiList.push(k); });
+            const rows = text.split(/\r?\n/).slice(1);
+            const cleanStr = (str) => str ? str.trim().replace(/^"|"$/g, '').trim() : '';
+            rows.forEach(row => {
+                if (!row.trim()) return;
+                const cols = row.split(',');
+                const kaomoji = cleanStr(cols[0]);
+                if (kaomoji) kaomojiList.push(kaomoji);
+            });
         }
 
         function initTouchFeedback() {
-            document.addEventListener('touchstart', e => { const t = e.target.closest('.touch-feedback'); if (t) t.classList.add('pressed'); }, {passive: true});
-            const rm = () => document.querySelectorAll('.pressed').forEach(el => setTimeout(() => el.classList.remove('pressed'), 80));
-            ['touchend', 'touchcancel', 'touchmove'].forEach(evt => document.addEventListener(evt, rm, {passive: true}));
+            const selector = '.category-btn, .action-btn, .result-item, .control-option, .history-btn, .search-btn, .toggle-btn, .font-btn, .emoji-chip, .emoji-add-btn, .close-x, .tab-btn, .delete-btn, .close-btn-full, .clear-btn, .tutorial-btn-full, .welcome-close-btn, .action-btn-small, .history-item, .extension-toggle, .welcome-btn, .help-banner';
+            document.addEventListener('touchstart', function(e) { const target = e.target.closest(selector); if (target) target.classList.add('pressed'); }, {passive: true});
+            const removePressed = () => { document.querySelectorAll('.pressed').forEach(el => setTimeout(() => el.classList.remove('pressed'), 80)); };
+            document.addEventListener('touchend', removePressed, {passive: true});
+            document.addEventListener('touchcancel', removePressed, {passive: true});
+            document.addEventListener('touchmove', removePressed, {passive: true});
         }
+
         function initDarkMode() {
-            const saved = localStorage.getItem('theme'), chk = document.getElementById('toggle-dark');
-            if (saved === 'dark' || saved === null) { document.documentElement.classList.add('dark-mode'); if(chk) chk.checked = true; }
-            else { document.documentElement.classList.remove('dark-mode'); if(chk) chk.checked = false; }
+            const savedTheme = localStorage.getItem('theme');
+            const checkbox = document.getElementById('toggle-dark');
+            const root = document.documentElement;
+            if (savedTheme === null) { root.classList.add('dark-mode'); if(checkbox) checkbox.checked = true; localStorage.setItem('theme', 'dark'); }
+            else if (savedTheme === 'dark') { root.classList.add('dark-mode'); if(checkbox) checkbox.checked = true; }
+            else { root.classList.remove('dark-mode'); if(checkbox) checkbox.checked = false; }
         }
         function setDarkMode(isDark) {
-            triggerHaptic(); document.documentElement.classList.toggle('dark-mode', isDark); localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            triggerHaptic(10);
+            const root = document.documentElement;
+            if (isDark) root.classList.add('dark-mode');
+            else root.classList.remove('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
         }
-        function triggerHaptic(d = 10) { if (navigator.vibrate) navigator.vibrate(d); }
-
-        function addToBookmark() {
-            triggerHaptic();
-            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            const isAndroid = /Android/.test(navigator.userAgent);
-            
-            if (isIOS) { alert("📱 iOS 使用者請點擊下方分享按鈕，選擇「加入主畫面」即可安裝為 App！"); }
-            else if (isAndroid) { alert("📱 Android 使用者請點擊瀏覽器選單，選擇「加入主畫面」或「安裝應用程式」！"); }
-            else if (isMac) { alert("💻 請按下 Command + D 將此頁加入書籤！"); }
-            else { alert("💻 請按下 Ctrl + D 將此頁加入書籤！"); }
-        }
-
+        function triggerHaptic(duration = 10) { if (navigator.vibrate) navigator.vibrate(duration); }
+        
         function showWelcomeModal() {
-            const mKeys = Object.keys(database); if (!mKeys.length) return;
-            const rMain = mKeys[Math.floor(Math.random() * mKeys.length)];
-            const sKeys = Object.keys(database[rMain].subs); if (!sKeys.length) return;
-            const rSub = sKeys[Math.floor(Math.random() * sKeys.length)];
-            const phrases = database[rMain].subs[rSub].phrases; if (!phrases.length) return;
+            const mainKeys = Object.keys(database); if (mainKeys.length === 0) return;
+            const randomMain = mainKeys[Math.floor(Math.random() * mainKeys.length)];
+            const subKeys = Object.keys(database[randomMain].subs); if (subKeys.length === 0) return;
+            const randomSub = subKeys[Math.floor(Math.random() * subKeys.length)];
+            const phrases = database[randomMain].subs[randomSub].phrases; if (phrases.length === 0) return;
             
-            const rPhrase = phrases[Math.floor(Math.random() * phrases.length)];
-            const rEmoji = defaultFaces[Math.floor(Math.random() * defaultFaces.length)];
+            const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+            const randomEmoji = defaultFaces[Math.floor(Math.random() * defaultFaces.length)];
             
+            // Set Date
             const now = new Date();
             document.getElementById('modal-date').textContent = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')}`;
-            document.getElementById('welcome-emoji').textContent = rEmoji;
-            document.getElementById('welcome-text').textContent = rPhrase.jp + "！";
+            
+            document.getElementById('welcome-emoji').textContent = randomEmoji;
+            document.getElementById('welcome-text').textContent = randomPhrase.jp + "！"; // Add exclamation mark
+            
+            // Positioning Logic
+            const modalContent = document.querySelector('.welcome-content');
+            const favBtn = document.getElementById('fav-btn-main');
+            
+            if (favBtn) {
+                const rect = favBtn.getBoundingClientRect();
+                const btnCenterX = rect.left + (rect.width / 2);
+                const btnBottomY = rect.bottom;
+                
+                modalContent.style.position = 'absolute';
+                modalContent.style.left = btnCenterX + 'px';
+                modalContent.style.top = (btnBottomY + 15) + 'px';
+                modalContent.style.transform = 'translateX(-50%)';
+                modalContent.style.animation = 'popInDropdown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards';
+                
+                const contentWidth = 300;
+                if (btnCenterX - (contentWidth/2) < 10) {
+                    modalContent.style.left = (10 + contentWidth/2) + 'px';
+                } else if (btnCenterX + (contentWidth/2) > window.innerWidth - 10) {
+                    modalContent.style.left = (window.innerWidth - 10 - contentWidth/2) + 'px';
+                }
+            } else {
+                modalContent.style.position = 'fixed';
+                modalContent.style.top = '50%';
+                modalContent.style.left = '50%';
+                modalContent.style.transform = 'translate(-50%, -50%)';
+            }
+
             document.getElementById('welcome-modal').style.display = 'block';
         }
-        function closeWelcomeModal() { triggerHaptic(); document.getElementById('welcome-modal').style.display = 'none'; }
-        function copyWelcomeText() { copyToClipboard(document.getElementById('welcome-text').textContent); }
+        function closeWelcomeModal() { triggerHaptic(10); document.getElementById('welcome-modal').style.display = 'none'; }
+        
+        function copyWelcomeText() {
+            const text = document.getElementById('welcome-text').textContent;
+            copyToClipboard(text);
+        }
+
         function saveCardAsImage() {
-            triggerHaptic(); const el = document.getElementById('capture-target'); const r = el.style.borderRadius; el.style.borderRadius = "0";
-            html2canvas(el, {backgroundColor: null, scale: 2}).then(canvas => {
-                el.style.borderRadius = r; const link = document.createElement('a'); link.download = `gentleman_card_${Date.now()}.jpg`;
-                link.href = canvas.toDataURL('image/jpeg', 0.9); link.click(); showToast("📸 圖片已儲存！");
+            triggerHaptic(10);
+            const element = document.getElementById('capture-target');
+            const originalRadius = element.style.borderRadius;
+            element.style.borderRadius = "0"; 
+            
+            html2canvas(element, {
+                backgroundColor: null, 
+                scale: 2 
+            }).then(canvas => {
+                element.style.borderRadius = originalRadius; 
+                const link = document.createElement('a');
+                link.download = `gentleman_card_${Date.now()}.jpg`;
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+                showToast("📸 圖片已儲存！");
             });
         }
 
         function loadSettings() {
-            const s = localStorage.getItem('appSettings'); if (s) try { appSettings = { ...appSettings, ...JSON.parse(s) }; } catch(e) {}
-            activeFaces = JSON.parse(localStorage.getItem('customFaces')) || [...defaultFaces];
-            activeDecor = JSON.parse(localStorage.getItem('customDecor')) || [...defaultDecor];
-            disabledFaces = JSON.parse(localStorage.getItem('disabledFaces')) || [];
-            disabledDecor = JSON.parse(localStorage.getItem('disabledDecor')) || [];
-            savedSubCategories = JSON.parse(localStorage.getItem('savedSubCategories')) || [];
+            const savedAppSettings = localStorage.getItem('appSettings');
+            if (savedAppSettings) { try { appSettings = { ...appSettings, ...JSON.parse(savedAppSettings) }; } catch(e) {} }
+            if (typeof appSettings.customMin === 'undefined') appSettings.customMin = 3;
+            if (typeof appSettings.customMax === 'undefined') appSettings.customMax = 5;
+            if (typeof appSettings.voiceRate === 'undefined') appSettings.voiceRate = 1.1;
+            if (typeof appSettings.voicePitch === 'undefined') appSettings.voicePitch = 1.0;
+            if (typeof appSettings.copyAction === 'undefined') appSettings.copyAction = 'none';
+
+            const savedFaces = localStorage.getItem('customFaces');
+            const savedDecor = localStorage.getItem('customDecor');
+            const savedDisabledFaces = localStorage.getItem('disabledFaces');
+            const savedDisabledDecor = localStorage.getItem('disabledDecor');
+            
+            activeFaces = savedFaces ? JSON.parse(savedFaces) : [...defaultFaces];
+            activeDecor = savedDecor ? JSON.parse(savedDecor) : [...defaultDecor];
+            disabledFaces = savedDisabledFaces ? JSON.parse(savedDisabledFaces) : [];
+            disabledDecor = savedDisabledDecor ? JSON.parse(savedDisabledDecor) : [];
+
+            const savedSubs = localStorage.getItem('savedSubCategories');
+            savedSubCategories = savedSubs ? JSON.parse(savedSubs) : [];
         }
+
         function saveAllSettings() {
             localStorage.setItem('appSettings', JSON.stringify(appSettings));
             localStorage.setItem('customFaces', JSON.stringify(activeFaces));
@@ -653,212 +966,308 @@
             localStorage.setItem('disabledDecor', JSON.stringify(disabledDecor));
             localStorage.setItem('savedSubCategories', JSON.stringify(savedSubCategories));
         }
+
         function applySettingsUI() {
             setFontSize(appSettings.fontSize, false);
-            document.getElementById('count-slider').value = appSettings.resultCount; document.getElementById('count-display').textContent = appSettings.resultCount;
-            document.getElementById('min-custom-slider').value = appSettings.customMin; document.getElementById('min-custom-display').textContent = appSettings.customMin;
-            document.getElementById('max-custom-slider').value = appSettings.customMax; document.getElementById('max-custom-display').textContent = appSettings.customMax;
-            document.getElementById('rate-slider').value = appSettings.voiceRate; document.getElementById('pitch-slider').value = appSettings.voicePitch;
-            document.getElementById('toggle-cn').checked = appSettings.showCN; document.getElementById('toggle-speak').checked = appSettings.showSpeak;
-            toggleSetting('showCN', appSettings.showCN, false); toggleSetting('showSpeak', appSettings.showSpeak, false);
+            document.getElementById('count-slider').value = appSettings.resultCount;
+            document.getElementById('count-display').textContent = appSettings.resultCount;
+            document.getElementById('min-custom-slider').value = appSettings.customMin;
+            document.getElementById('min-custom-display').textContent = appSettings.customMin;
+            document.getElementById('max-custom-slider').value = appSettings.customMax;
+            document.getElementById('max-custom-display').textContent = appSettings.customMax;
+            document.getElementById('rate-slider').value = appSettings.voiceRate;
+            document.getElementById('pitch-slider').value = appSettings.voicePitch;
+            document.getElementById('toggle-cn').checked = appSettings.showCN;
+            document.getElementById('toggle-speak').checked = appSettings.showSpeak;
+            toggleSetting('showCN', appSettings.showCN, false);
+            toggleSetting('showSpeak', appSettings.showSpeak, false);
         }
+        
         function exportSettings() {
-            triggerHaptic(); const data = { appSettings, activeFaces, activeDecor, disabledFaces, disabledDecor, savedSubCategories, favorites };
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"}));
-            a.download = "gentleman_settings.json"; a.click();
+            triggerHaptic(10);
+            const data = { appSettings, activeFaces, activeDecor, disabledFaces, disabledDecor, savedSubCategories, favorites };
+            const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = "gentleman_settings.json";
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
         }
+        
         function importSettings(input) {
-            const f = input.files[0]; if (!f) return; const r = new FileReader();
-            r.onload = e => { try { const d = JSON.parse(e.target.result); if(d.appSettings) appSettings = d.appSettings; if(d.activeFaces) activeFaces = d.activeFaces; if(d.activeDecor) activeDecor = d.activeDecor; if(d.favorites) favorites = d.favorites; saveAllSettings(); localStorage.setItem('favorites', JSON.stringify(favorites)); location.reload(); } catch(e) { alert("❌ 檔案錯誤"); } };
-            r.readAsText(f);
+            const file = input.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(data.appSettings) appSettings = data.appSettings;
+                    if(data.activeFaces) activeFaces = data.activeFaces;
+                    if(data.activeDecor) activeDecor = data.activeDecor;
+                    if(data.disabledFaces) disabledFaces = data.disabledFaces;
+                    if(data.disabledDecor) disabledDecor = data.disabledDecor;
+                    if(data.savedSubCategories) savedSubCategories = data.savedSubCategories;
+                    if(data.favorites) favorites = data.favorites;
+                    saveAllSettings(); localStorage.setItem('favorites', JSON.stringify(favorites));
+                    alert("✅ 設定匯入成功！頁面將重新整理。"); location.reload();
+                } catch(err) { alert("❌ 匯入失敗：檔案格式錯誤"); }
+            };
+            reader.readAsText(file);
         }
 
-        function openSettings(e) { triggerHaptic(); document.getElementById('history-modal').style.display = 'none'; const m = document.getElementById('settings-modal'); m.style.display = 'block'; document.getElementById('settings-content-box').style.top = e ? (e.clientY > window.innerHeight*0.6 ? window.innerHeight*0.4 : e.clientY)+'px' : '20%'; switchSettingsTab('general'); }
-        function closeSettings(e) { if (e && e.target.id !== 'settings-modal') return; document.getElementById('settings-modal').style.display = 'none'; }
+        function openSettings(event) {
+            triggerHaptic(10); document.getElementById('history-modal').style.display = 'none';
+            const modal = document.getElementById('settings-modal'); const content = document.getElementById('settings-content-box');
+            modal.style.display = 'block';
+            if (event) { let topPos = event.clientY; if (topPos > window.innerHeight * 0.6) topPos = window.innerHeight * 0.4; content.style.top = topPos + 'px'; } else { content.style.top = '20%'; }
+            switchSettingsTab('general');
+        }
+        function closeSettings(event) { if (event && event.target.id !== 'settings-modal') return; document.getElementById('settings-modal').style.display = 'none'; }
         function switchSettingsTab(tab) {
             currentSettingsTab = tab; document.querySelectorAll('#settings-modal .tab-btn').forEach(b => b.classList.remove('active'));
-            ['general', 'emoji', 'custom'].forEach(id => document.getElementById('panel-'+id).style.display = 'none');
-            if (tab === 'general') { document.getElementById('tab-general').classList.add('active'); document.getElementById('panel-general').style.display = 'block'; }
-            else if (tab === 'custom') { document.getElementById('tab-custom').classList.add('active'); document.getElementById('panel-custom').style.display = 'block'; }
-            else { document.getElementById('tab-'+tab).classList.add('active'); document.getElementById('panel-emoji').style.display = 'block'; renderEmojiGrid(); }
+            document.getElementById('panel-general').style.display = 'none'; document.getElementById('panel-emoji').style.display = 'none'; document.getElementById('panel-custom').style.display = 'none';
+            if (tab === 'general') { document.getElementById('tab-general').classList.add('active'); document.getElementById('panel-general').style.display = 'block'; } 
+            else if (tab === 'custom') { document.getElementById('tab-custom').classList.add('active'); document.getElementById('panel-custom').style.display = 'block'; } 
+            else { document.getElementById('tab-' + tab).classList.add('active'); document.getElementById('panel-emoji').style.display = 'block'; renderEmojiGrid(); }
         }
-        function openTutorial() { triggerHaptic(); document.getElementById('settings-modal').style.display = 'none'; document.getElementById('tutorial-modal').style.display = 'block'; }
-        function closeTutorial(e) { if (e && e.target.id !== 'tutorial-modal' && e.target.className !== 'close-btn-full' && e.target.className !== 'close-x') return; document.getElementById('tutorial-modal').style.display = 'none'; document.getElementById('settings-modal').style.display = 'block'; }
 
-        function setFontSize(s, save=true) {
-            if (save) { triggerHaptic(); appSettings.fontSize = s; saveAllSettings(); }
+        function openTutorial() { triggerHaptic(10); document.getElementById('settings-modal').style.display = 'none'; const modal = document.getElementById('tutorial-modal'); const content = document.getElementById('tutorial-content-box'); modal.style.display = 'block'; content.style.top = '15%'; }
+        function closeTutorial(event) { if (event && event.target.id !== 'tutorial-modal' && event.target.className !== 'close-btn-full' && event.target.className !== 'close-x') return; document.getElementById('tutorial-modal').style.display = 'none'; document.getElementById('settings-modal').style.display = 'block'; }
+
+        function setFontSize(size, save = true) {
+            if (save) triggerHaptic(10); appSettings.fontSize = size;
             document.querySelectorAll('.font-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(['font-s','font-m','font-l'][s]).classList.add('active');
-            const r = document.documentElement.style;
-            if (s===0) { r.setProperty('--fs-jp','0.8rem'); r.setProperty('--fs-cn','0.75rem'); }
-            else if (s===1) { r.setProperty('--fs-jp','0.9rem'); r.setProperty('--fs-cn','0.8rem'); }
-            else { r.setProperty('--fs-jp','1.1rem'); r.setProperty('--fs-cn','0.95rem'); }
+            if(size === 0) document.getElementById('font-s').classList.add('active'); if(size === 1) document.getElementById('font-m').classList.add('active'); if(size === 2) document.getElementById('font-l').classList.add('active');
+            const root = document.documentElement;
+            if (size === 0) { root.style.setProperty('--fs-jp', '0.8rem'); root.style.setProperty('--fs-cn', '0.75rem'); }
+            else if (size === 1) { root.style.setProperty('--fs-jp', '0.9rem'); root.style.setProperty('--fs-cn', '0.8rem'); }
+            else { root.style.setProperty('--fs-jp', '1.1rem'); root.style.setProperty('--fs-cn', '0.95rem'); }
+            if (save) saveAllSettings();
         }
-        function updateResultCount(v) { appSettings.resultCount = parseInt(v); document.getElementById('count-display').textContent = v; saveAllSettings(); }
-        function updateCustomMix(t, v) {
-            v = parseInt(v); if (t === 'min') { if (v > appSettings.customMax) v = appSettings.customMax; appSettings.customMin = v; } else { if (v < appSettings.customMin) v = appSettings.customMin; appSettings.customMax = v; }
-            document.getElementById('min-custom-display').textContent = appSettings.customMin; document.getElementById('max-custom-display').textContent = appSettings.customMax; 
-            document.getElementById('min-custom-slider').value = appSettings.customMin; document.getElementById('max-custom-slider').value = appSettings.customMax; saveAllSettings();
+
+        function updateResultCount(val) { appSettings.resultCount = parseInt(val); document.getElementById('count-display').textContent = val; saveAllSettings(); }
+        function updateCustomMix(type, val) {
+            val = parseInt(val);
+            if (type === 'min') { if (val > appSettings.customMax) { val = appSettings.customMax; document.getElementById('min-custom-slider').value = val; } appSettings.customMin = val; document.getElementById('min-custom-display').textContent = val; } 
+            else { if (val < appSettings.customMin) { val = appSettings.customMin; document.getElementById('max-custom-slider').value = val; } appSettings.customMax = val; document.getElementById('max-custom-display').textContent = val; }
+            saveAllSettings();
         }
-        function toggleSetting(k, v, save=true) { appSettings[k] = v; document.body.classList.toggle(k==='showCN'?'hide-cn':'hide-speak', !v); if(save) saveAllSettings(); }
-        function updateVoiceSetting(k, v) { if(k==='rate') appSettings.voiceRate = parseFloat(v); else appSettings.voicePitch = parseFloat(v); saveAllSettings(); }
-        function testVoice() { const u = new SpeechSynthesisUtterance("大好き"); u.lang = 'ja-JP'; u.rate = appSettings.voiceRate; u.pitch = appSettings.voicePitch; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
-        function resetAllData() { if(confirm("確定要清除所有資料嗎？")) { triggerHaptic(); localStorage.clear(); location.reload(); } }
+        function toggleSetting(key, value, save = true) {
+            appSettings[key] = value;
+            if (key === 'showCN') { if (value) document.body.classList.remove('hide-cn'); else document.body.classList.add('hide-cn'); }
+            if (key === 'showSpeak') { if (value) document.body.classList.remove('hide-speak'); else document.body.classList.add('hide-speak'); }
+            if (save) saveAllSettings();
+        }
+        function updateVoiceSetting(key, val) { if (key === 'rate') appSettings.voiceRate = parseFloat(val); if (key === 'pitch') appSettings.voicePitch = parseFloat(val); saveAllSettings(); }
+        function testVoice() { const utterance = new SpeechSynthesisUtterance("大好き"); utterance.lang = 'ja-JP'; utterance.rate = appSettings.voiceRate; utterance.pitch = appSettings.voicePitch; window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance); }
+        function resetAllData() { if(confirm("確定要清除所有資料嗎？\n這將重置所有設定、收藏與自訂表符。")) { triggerHaptic(10); localStorage.clear(); location.reload(); } }
 
         function renderEmojiGrid() {
-            const g = document.getElementById('emoji-grid'); g.innerHTML = '';
-            const list = currentSettingsTab === 'faces' ? activeFaces : activeDecor;
-            const dis = currentSettingsTab === 'faces' ? disabledFaces : disabledDecor;
-            list.forEach(e => { const c = document.createElement('div'); c.className = 'emoji-chip'; c.textContent = e; c.onclick = () => toggleEmojiStatus(e, true); g.appendChild(c); });
-            dis.forEach(e => { const c = document.createElement('div'); c.className = 'emoji-chip disabled'; c.textContent = e; c.onclick = () => toggleEmojiStatus(e, false); g.appendChild(c); });
+            const grid = document.getElementById('emoji-grid'); grid.innerHTML = '';
+            const activeList = currentSettingsTab === 'faces' ? activeFaces : activeDecor;
+            const disabledList = currentSettingsTab === 'faces' ? disabledFaces : disabledDecor;
+            activeList.forEach(emoji => { const chip = document.createElement('div'); chip.className = 'emoji-chip'; chip.textContent = emoji; chip.onclick = () => toggleEmojiStatus(emoji, true); grid.appendChild(chip); });
+            disabledList.forEach(emoji => { const chip = document.createElement('div'); chip.className = 'emoji-chip disabled'; chip.textContent = emoji; chip.onclick = () => toggleEmojiStatus(emoji, false); grid.appendChild(chip); });
         }
-        function toggleEmojiStatus(e, isActive) {
-            triggerHaptic();
-            const targetActive = currentSettingsTab === 'faces' ? activeFaces : activeDecor;
-            const targetDis = currentSettingsTab === 'faces' ? disabledFaces : disabledDecor;
-            if (isActive) { targetActive.splice(targetActive.indexOf(e), 1); if(!targetDis.includes(e)) targetDis.push(e); }
-            else { targetDis.splice(targetDis.indexOf(e), 1); if(!targetActive.includes(e)) targetActive.push(e); }
+        function toggleEmojiStatus(emoji, isActive) {
+            triggerHaptic(10);
+            if (currentSettingsTab === 'faces') { if (isActive) { activeFaces = activeFaces.filter(e => e !== emoji); if (!disabledFaces.includes(emoji)) disabledFaces.push(emoji); } else { disabledFaces = disabledFaces.filter(e => e !== emoji); if (!activeFaces.includes(emoji)) activeFaces.push(emoji); } } 
+            else { if (isActive) { activeDecor = activeDecor.filter(e => e !== emoji); if (!disabledDecor.includes(emoji)) disabledDecor.push(emoji); } else { disabledDecor = disabledDecor.filter(e => e !== emoji); if (!activeDecor.includes(emoji)) activeDecor.push(emoji); } }
             saveAllSettings(); renderEmojiGrid();
         }
         function addNewEmoji() {
-            const i = document.getElementById('new-emoji-input'), v = i.value.trim(); if (!v) return; triggerHaptic();
-            const target = currentSettingsTab === 'faces' ? activeFaces : activeDecor;
-            if (!target.includes(v)) target.push(v); i.value = ''; saveAllSettings(); renderEmojiGrid();
+            const input = document.getElementById('new-emoji-input'); const val = input.value.trim(); if (!val) return; triggerHaptic(10);
+            if (currentSettingsTab === 'faces') { if (!activeFaces.includes(val) && !disabledFaces.includes(val)) activeFaces.push(val); } else { if (!activeDecor.includes(val) && !disabledDecor.includes(val)) activeDecor.push(val); }
+            input.value = ''; saveAllSettings(); renderEmojiGrid();
         }
 
         function createStarButton() {
-            const b = document.createElement('div'); b.id = 'embedded-star-btn'; b.className = 'category-btn special-star disabled';
+            const btn = document.createElement('div'); btn.id = 'embedded-star-btn'; btn.className = 'category-btn special-star disabled';
             if (currentMain === 'featured_custom') {
-                if (!savedSubCategories.length) b.style.display = 'none';
-                else { b.textContent = '💔 移出精選'; b.classList.remove('disabled'); b.onclick = removeCurrentFromFeatured; }
-            } else { b.textContent = '⭐ 加入精選'; b.onclick = toggleSavedSubCategory; }
-            return b;
+                if (savedSubCategories.length === 0) { btn.style.display = 'none'; } 
+                else { btn.textContent = '💔 移出精選'; btn.classList.remove('active-star'); btn.classList.remove('disabled'); btn.onclick = () => removeCurrentFromFeatured(); }
+            } else { btn.textContent = '⭐ 加入精選'; btn.onclick = () => toggleSavedSubCategory(); }
+            return btn;
         }
         function updateEmbeddedStarState() {
-            const b = document.getElementById('embedded-star-btn'); if (!b) return;
+            const btn = document.getElementById('embedded-star-btn'); if (!btn) return;
             if (currentMain === 'featured_custom') {
-                if (!savedSubCategories.length) b.style.display = 'none';
-                else { b.style.display = 'flex'; b.textContent = '💔 移出精選'; b.classList.remove('active-star', 'disabled'); b.onclick = removeCurrentFromFeatured; }
-            } else {
-                b.style.display = 'flex';
-                if (!currentMain || !currentSub) { b.classList.remove('active-star'); b.classList.add('disabled'); b.textContent = '⭐ 加入精選'; b.onclick = null; }
-                else {
-                    b.classList.remove('disabled'); const exists = savedSubCategories.some(i => i.main === currentMain && i.sub === currentSub);
-                    b.classList.toggle('active-star', exists); b.textContent = exists ? '⭐ 已加入' : '⭐ 加入精選'; b.onclick = toggleSavedSubCategory;
-                }
+                if (savedSubCategories.length === 0) { btn.style.display = 'none'; } 
+                else { btn.style.display = 'flex'; btn.textContent = '💔 移出精選'; btn.classList.remove('active-star'); btn.classList.remove('disabled'); btn.onclick = () => removeCurrentFromFeatured(); }
+                return;
+            }
+            btn.style.display = 'flex';
+            if (!currentMain || !currentSub) { btn.classList.remove('active-star'); btn.classList.add('disabled'); btn.textContent = '⭐ 加入精選'; btn.onclick = null; } 
+            else { btn.classList.remove('disabled'); const exists = savedSubCategories.some(item => item.main === currentMain && item.sub === currentSub);
+                if (exists) { btn.classList.add('active-star'); btn.textContent = '⭐ 已加入'; btn.onclick = () => toggleSavedSubCategory(); } else { btn.classList.remove('active-star'); btn.textContent = '⭐ 加入精選'; btn.onclick = () => toggleSavedSubCategory(); }
             }
         }
         function removeCurrentFromFeatured() {
-            if (currentMain !== 'featured_custom' || !currentSub) return;
-            const idx = savedSubCategories.findIndex(i => i.sub === currentSub); if (idx === -1) return;
-            if(confirm(`移出「${savedSubCategories[idx].label}」？`)) {
-                triggerHaptic(); savedSubCategories.splice(idx, 1); saveAllSettings();
-                const orgMain = savedSubCategories[idx]?.main;
-                if (orgMain) { selectMainCategory(orgMain, [...document.querySelectorAll('#main-grid .category-btn')].find(b => b.textContent === database[orgMain].label)); }
-                else { selectFeaturedCategory(document.querySelector('.category-btn.featured')); }
-            }
+             if (currentMain !== 'featured_custom' || !currentSub) return;
+             const itemIndex = savedSubCategories.findIndex(item => item.sub === currentSub); if (itemIndex === -1) return;
+             const originalMain = savedSubCategories[itemIndex].main; const originalSub = savedSubCategories[itemIndex].sub;
+             if(confirm(`確定要將「${savedSubCategories[itemIndex].label}」移出精選嗎？`)) {
+                 triggerHaptic(10); savedSubCategories.splice(itemIndex, 1); saveAllSettings();
+                 const mainBtns = document.querySelectorAll('#main-grid .category-btn'); let targetMainBtn = Array.from(mainBtns).find(btn => btn.textContent === database[originalMain].label);
+                 if (targetMainBtn) { selectMainCategory(originalMain, targetMainBtn); setTimeout(() => { const subBtns = document.querySelectorAll('#sub-grid .category-btn'); let targetSubBtn = Array.from(subBtns).find(btn => btn.textContent === database[originalMain].subs[originalSub].label); if(targetSubBtn) selectSubCategory(originalSub, targetSubBtn); }, 50); } else { const featuredBtn = document.querySelector('.category-btn.featured'); selectFeaturedCategory(featuredBtn); }
+             }
         }
         function toggleSavedSubCategory() {
-            if (!currentMain || !currentSub) return; triggerHaptic();
-            const idx = savedSubCategories.findIndex(i => i.main === currentMain && i.sub === currentSub);
-            if (idx !== -1) savedSubCategories.splice(idx, 1); else savedSubCategories.push({ main: currentMain, sub: currentSub, label: database[currentMain].subs[currentSub].label });
+            if (!currentMain || !currentSub) return; triggerHaptic(10);
+            const existsIndex = savedSubCategories.findIndex(item => item.main === currentMain && item.sub === currentSub);
+            if (existsIndex !== -1) { savedSubCategories.splice(existsIndex, 1); } else { const subLabel = database[currentMain].subs[currentSub].label; savedSubCategories.push({ main: currentMain, sub: currentSub, label: subLabel }); }
             saveAllSettings(); updateEmbeddedStarState();
         }
 
-        function showSkeletonLoading() { mainGrid.innerHTML = ''; for(let i=0;i<9;i++) mainGrid.appendChild(Object.assign(document.createElement('div'), {className:'category-btn skeleton'})); }
-        function loadHistory() { try { historyLog = JSON.parse(localStorage.getItem('historyLog')) || []; } catch(e) { historyLog = []; } }
-        function addToHistory(t) { if (historyLog[0] !== t) { historyLog.unshift(t); if (historyLog.length > 16) historyLog.pop(); localStorage.setItem('historyLog', JSON.stringify(historyLog)); } }
-        function loadFavorites() { try { favorites = JSON.parse(localStorage.getItem('favorites')) || []; } catch(e) { favorites = []; } }
-        function toggleFavorite(t, btn) {
-            triggerHaptic(); const idx = favorites.indexOf(t);
-            if (idx === -1) { if (favorites.length >= 24) return alert("收藏已滿！"); favorites.push(t); btn.classList.add('active'); btn.textContent = '★'; }
-            else { favorites.splice(idx, 1); btn.classList.remove('active'); btn.textContent = '☆'; }
+        function showSkeletonLoading() { mainGrid.innerHTML = ''; for (let i = 0; i < 9; i++) { const div = document.createElement('div'); div.className = 'category-btn skeleton'; mainGrid.appendChild(div); } }
+        function loadHistory() { const saved = localStorage.getItem('historyLog'); if (saved) { try { historyLog = JSON.parse(saved); } catch (e) { historyLog = []; } } }
+        function saveHistory() { localStorage.setItem('historyLog', JSON.stringify(historyLog)); }
+        function addToHistory(text) { if (historyLog.length > 0 && historyLog[0] === text) return; historyLog.unshift(text); if (historyLog.length > 16) historyLog.pop(); saveHistory(); }
+        function loadFavorites() { const saved = localStorage.getItem('favorites'); if (saved) { try { favorites = JSON.parse(saved); } catch (e) { favorites = []; } } }
+        function toggleFavorite(text, btn) {
+            triggerHaptic(10); const index = favorites.indexOf(text);
+            if (index === -1) { if (favorites.length >= 24) { alert("我的最愛已滿 (24則)，請先刪除舊的！"); return; } favorites.push(text); btn.classList.add('active'); btn.textContent = '★'; } 
+            else { favorites.splice(index, 1); btn.classList.remove('active'); btn.textContent = '☆'; }
             localStorage.setItem('favorites', JSON.stringify(favorites)); if(currentTab === 'fav') renderHistoryList();
         }
-        function clearFavorites() { if(confirm("清空所有收藏？")) { triggerHaptic(); favorites = []; localStorage.setItem('favorites', '[]'); renderHistoryList(); if(currentDisplayState.length) renderFromState(false); } }
-        function switchTab(t) { currentTab = t; document.getElementById('tab-history').classList.toggle('active', t==='history'); document.getElementById('tab-fav').classList.toggle('active', t==='fav'); document.getElementById('clear-fav-btn').style.display = t==='fav'?'block':'none'; renderHistoryList(); }
+        function removeFavorite(text) { triggerHaptic(10); const index = favorites.indexOf(text); if (index !== -1) { favorites.splice(index, 1); localStorage.setItem('favorites', JSON.stringify(favorites)); renderHistoryList(); if(currentDisplayState.length > 0) renderFromState(false); } }
+        function clearFavorites() { if(confirm("確定要清空所有收藏嗎？")) { triggerHaptic(10); favorites = []; localStorage.setItem('favorites', JSON.stringify(favorites)); renderHistoryList(); if(currentDisplayState.length > 0) renderFromState(false); } }
+        function switchTab(tab) { currentTab = tab; document.getElementById('tab-history').classList.toggle('active', tab === 'history'); document.getElementById('tab-fav').classList.toggle('active', tab === 'fav'); document.getElementById('clear-fav-btn').style.display = tab === 'fav' ? 'block' : 'none'; renderHistoryList(); }
         function renderHistoryList() {
-            const l = document.getElementById('history-list'); l.innerHTML = ''; const d = currentTab==='history'?historyLog:favorites;
-            if (!d.length) l.innerHTML = `<div class="history-empty">${currentTab==='history'?'無紀錄':'無收藏'}</div>`;
-            else d.forEach(t => {
-                const i = document.createElement('div'); i.className = 'history-item';
-                i.innerHTML = `<span class="history-text" onclick="copyToClipboard('${t}')">${t}</span>` + (currentTab==='fav' ? `<span class="delete-btn" onclick="event.stopPropagation();removeFavorite('${t}')">🗑️</span>` : '');
-                l.appendChild(i);
-            });
+            const list = document.getElementById('history-list'); list.innerHTML = ''; const data = currentTab === 'history' ? historyLog : favorites; const emptyText = currentTab === 'history' ? '尚未有複製紀錄' : '尚未有收藏';
+            if (data.length === 0) list.innerHTML = `<div class="history-empty">${emptyText}</div>`;
+            else { data.forEach(text => { const item = document.createElement('div'); item.className = 'history-item'; const textSpan = document.createElement('span'); textSpan.className = 'history-text'; textSpan.textContent = text; textSpan.onclick = () => copyToClipboard(text, event); item.appendChild(textSpan); if (currentTab === 'fav') { const delBtn = document.createElement('span'); delBtn.className = 'delete-btn'; delBtn.textContent = '🗑️'; delBtn.onclick = (e) => { e.stopPropagation(); removeFavorite(text); }; item.appendChild(delBtn); } list.appendChild(item); }); }
         }
-        function removeFavorite(t) { triggerHaptic(); favorites = favorites.filter(f => f !== t); localStorage.setItem('favorites', JSON.stringify(favorites)); renderHistoryList(); if(currentDisplayState.length) renderFromState(false); }
-        function openHistory(t, e) { triggerHaptic(); document.getElementById('history-modal').style.display = 'block'; document.getElementById('modal-content-box').style.top = e ? (e.clientY > window.innerHeight*0.6 ? window.innerHeight*0.4 : e.clientY)+'px' : '20%'; switchTab(t); }
-        function closeHistory(e) { if (e && e.target.id !== 'history-modal') return; document.getElementById('history-modal').style.display = 'none'; }
-        function speakText(t) { triggerHaptic(); const u = new SpeechSynthesisUtterance(t.replace(/[\u{1F600}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '')); u.lang = 'ja-JP'; u.rate = appSettings.voiceRate; u.pitch = appSettings.voicePitch; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
+        function openHistory(tab, event) { triggerHaptic(10); const modal = document.getElementById('history-modal'); const content = document.getElementById('modal-content-box'); modal.style.display = 'block'; if (event) { let topPos = event.clientY; if (topPos > window.innerHeight * 0.6) topPos = window.innerHeight * 0.4; content.style.top = topPos + 'px'; } else { content.style.top = '20%'; } switchTab(tab); }
+        function closeHistory(event) { if (event && event.target.id !== 'history-modal') return; document.getElementById('history-modal').style.display = 'none'; }
+        function speakText(text) { triggerHaptic(10); const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, ''); const utterance = new SpeechSynthesisUtterance(cleanText); utterance.lang = 'ja-JP'; utterance.rate = appSettings.voiceRate; utterance.pitch = appSettings.voicePitch; window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance); }
         
-        function createParticles(x, y) { for(let i=0;i<12;i++) { const p = document.createElement('div'); p.textContent = ['❤️','⭐','✨'][Math.floor(Math.random()*3)]; p.className = 'particle'; p.style.left = x+'px'; p.style.top = y+'px'; p.style.setProperty('--tx', (Math.random()*100-50)+'px'); p.style.setProperty('--ty', (Math.random()*100-50)+'px'); document.body.appendChild(p); setTimeout(()=>p.remove(), 800); } }
-        function toggleExtension(t, b) { triggerHaptic(); const c = document.getElementById('ext-'+t); c.classList.toggle('show'); b.classList.toggle('active'); if(t==='builder') isBuilderMode = !isBuilderMode; }
-        function copyBuilder() { const t = document.getElementById('builder-input').value; if(t.trim()) copyToClipboard(t); }
-        function clearBuilder() { triggerHaptic(); document.getElementById('builder-input').value = ''; }
-        function favBuilder() { const t = document.getElementById('builder-input').value; if(t.trim()){ if(favorites.length>=24)return alert("收藏滿了"); if(!favorites.includes(t)){favorites.push(t);localStorage.setItem('favorites',JSON.stringify(favorites));alert("已收藏");} } }
+        function createParticles(x, y) { const particles = ['❤️', '⭐', '✨', '💕']; for(let i=0; i<12; i++) { const p = document.createElement('div'); p.textContent = particles[Math.floor(Math.random()*particles.length)]; p.className = 'particle'; p.style.left = x + 'px'; p.style.top = y + 'px'; p.style.setProperty('--tx', (Math.random()*100 - 50) + 'px'); p.style.setProperty('--ty', (Math.random()*100 - 50) + 'px'); document.body.appendChild(p); setTimeout(() => p.remove(), 800); } }
+        function createCapsuleParticles(x, y) { const particles = ['💊', '⭐', '✨', '💊']; for(let i=0; i<16; i++) { const p = document.createElement('div'); p.textContent = particles[Math.floor(Math.random()*particles.length)]; p.className = 'particle'; p.style.left = x + 'px'; p.style.top = y + 'px'; p.style.setProperty('--tx', (Math.random()*120 - 60) + 'px'); p.style.setProperty('--ty', (Math.random()*120 - 60) + 'px'); document.body.appendChild(p); setTimeout(() => p.remove(), 800); } }
+        
+        function toggleExtension(type, btn) {
+            triggerHaptic(10);
+            const content = document.getElementById('ext-' + type);
+            const isActive = content.classList.contains('show');
+            content.classList.toggle('show');
+            btn.classList.toggle('active');
+            if (type === 'builder') isBuilderMode = !isActive;
+        }
+        
+        function copyBuilder() {
+            const text = document.getElementById('builder-input').value;
+            if (!text.trim()) return;
+            copyToClipboard(text);
+        }
+        
+        function clearBuilder() {
+            triggerHaptic(10);
+            document.getElementById('builder-input').value = '';
+        }
+        
+        function favBuilder() {
+            const text = document.getElementById('builder-input').value;
+            if (!text.trim()) return;
+            triggerHaptic(10);
+            if (favorites.length >= 24) { alert("我的最愛已滿 (24則)，請先刪除舊的！"); return; }
+            if (!favorites.includes(text)) {
+                favorites.push(text);
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+                alert("✅ 已收藏整篇文章！");
+            } else {
+                alert("⚠️ 這篇文章已經在收藏夾裡了！");
+            }
+        }
 
         function renderMainCategories() {
             mainGrid.innerHTML = '';
-            const fb = document.createElement('div'); fb.className = 'category-btn featured'; fb.textContent = '⭐ 精選細項'; fb.onclick = () => { triggerHaptic(); selectFeaturedCategory(fb); }; mainGrid.appendChild(fb);
-            Object.keys(database).forEach(k => { const b = document.createElement('div'); b.className = 'category-btn'; b.textContent = database[k].label; b.onclick = () => { triggerHaptic(); selectMainCategory(k, b); }; mainGrid.appendChild(b); });
+            const featuredBtn = document.createElement('div'); featuredBtn.className = 'category-btn featured'; featuredBtn.textContent = '⭐ 精選細項'; featuredBtn.onclick = () => { triggerHaptic(10); selectFeaturedCategory(featuredBtn); }; mainGrid.appendChild(featuredBtn);
+            Object.keys(database).forEach(key => { const btn = document.createElement('div'); btn.className = 'category-btn'; btn.textContent = database[key].label; btn.onclick = () => { triggerHaptic(10); selectMainCategory(key, btn); }; mainGrid.appendChild(btn); });
         }
-        function selectFeaturedCategory(b) { currentMain = 'featured_custom'; currentSub = null; currentDisplayState = []; seenIndices.clear(); resultArea.innerHTML = ''; subGrid.innerHTML = ''; clickHint.style.display = 'none'; document.querySelector('.sub-placeholder').style.display = 'none'; document.querySelectorAll('#main-grid .category-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderFeaturedSubGrid(); updateEmbeddedStarState(); }
-        function renderFeaturedSubGrid() { subGrid.innerHTML = ''; subGrid.appendChild(createStarButton()); if (!savedSubCategories.length) { document.querySelector('.sub-placeholder').style.display = 'block'; document.querySelector('.sub-placeholder').textContent = "無精選細項"; return; } savedSubCategories.forEach(i => { const b = document.createElement('div'); b.className = 'category-btn'; b.textContent = i.label; b.onclick = e => { triggerHaptic(); createParticles(e.clientX, e.clientY); selectSubCategoryFromFeatured(i, b); }; subGrid.appendChild(b); }); }
-        function selectSubCategoryFromFeatured(i, b) { currentMain = 'featured_custom'; currentSub = i.sub; seenIndices.clear(); document.querySelectorAll('#sub-grid .category-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); updateEmbeddedStarState(); regenBtn.textContent = "🔄 換一批"; regenBtn.onclick = e => { triggerHaptic(); generatePhrases(false, e); }; const d = database[i.main].subs[i.sub]; if(d) generatePhrasesLogic(d.phrases, true); }
-        function selectMainCategory(k, b) { currentMain = k; currentSub = null; currentDisplayState = []; seenIndices.clear(); resultArea.innerHTML = ''; subGrid.innerHTML = ''; clickHint.style.display = 'none'; document.querySelector('.sub-placeholder').style.display = 'none'; document.querySelectorAll('#main-grid .category-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); subGrid.appendChild(createStarButton()); Object.keys(database[k].subs).forEach(s => { const sb = document.createElement('div'); sb.className = 'category-btn'; sb.textContent = database[k].subs[s].label; sb.onclick = e => { triggerHaptic(); createParticles(e.clientX, e.clientY); selectSubCategory(s, sb); }; subGrid.appendChild(sb); }); updateActionButtonsState(); updateEmbeddedStarState(); }
-        function selectSubCategory(s, b) { currentSub = s; seenIndices.clear(); document.querySelectorAll('#sub-grid .category-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); updateEmbeddedStarState(); regenBtn.textContent = "🔄 換一批"; regenBtn.onclick = e => { triggerHaptic(); generatePhrases(false, e); }; generatePhrases(true); }
+        function selectFeaturedCategory(btnElement) { currentMain = 'featured_custom'; currentSub = null; currentDisplayState = []; seenIndices.clear(); resultArea.innerHTML = ''; subGrid.innerHTML = ''; clickHint.style.display = 'none'; document.querySelector('.sub-placeholder').style.display = 'none'; document.querySelectorAll('#main-grid .category-btn').forEach(b => b.classList.remove('active')); btnElement.classList.add('active'); renderFeaturedSubGrid(); updateEmbeddedStarState(); }
+        function renderFeaturedSubGrid() { subGrid.innerHTML = ''; subGrid.appendChild(createStarButton()); if (savedSubCategories.length === 0) { document.querySelector('.sub-placeholder').style.display = 'block'; document.querySelector('.sub-placeholder').textContent = "尚未有收藏的細項，請去其他分類點擊「⭐」"; return; } savedSubCategories.forEach(item => { const btn = document.createElement('div'); btn.className = 'category-btn'; btn.textContent = `${item.label}`; btn.onclick = (e) => { triggerHaptic(10); createParticles(e.clientX, e.clientY); selectSubCategoryFromFeatured(item, btn); }; subGrid.appendChild(btn); }); }
+        function selectSubCategoryFromFeatured(item, btnElement) { currentMain = 'featured_custom'; currentSub = item.sub; seenIndices.clear(); document.querySelectorAll('#sub-grid .category-btn').forEach(b => b.classList.remove('active')); btnElement.classList.add('active'); updateEmbeddedStarState(); regenBtn.textContent = "🔄 換一批"; regenBtn.onclick = (e) => { triggerHaptic(10); generatePhrases(false, e); }; const originalMain = item.main; const originalSub = item.sub; const targetData = database[originalMain].subs[originalSub]; if(targetData) { const count = Math.min(targetData.phrases.length, appSettings.resultCount); const selectedPhrases = getWeightedRandom(targetData.phrases, count); currentDisplayState = selectedPhrases.map(phrase => ({ base: phrase, emoji: generateEmojiCombo(), emotion: getRandomEmotion(), specificPos: Math.random() < 0.5 ? 1 : 2 })); renderFromState(true); } }
+        function selectMainCategory(key, btnElement) { currentMain = key; currentSub = null; currentDisplayState = []; seenIndices.clear(); resultArea.innerHTML = ''; subGrid.innerHTML = ''; clickHint.style.display = 'none'; document.querySelector('.sub-placeholder').style.display = 'none'; document.querySelectorAll('#main-grid .category-btn').forEach(b => b.classList.remove('active')); btnElement.classList.add('active'); subGrid.appendChild(createStarButton()); const subData = database[key].subs; for (const subKey in subData) { const btn = document.createElement('div'); btn.className = 'category-btn'; btn.textContent = subData[subKey].label; btn.onclick = (e) => { triggerHaptic(10); createParticles(e.clientX, e.clientY); selectSubCategory(subKey, btn); }; subGrid.appendChild(btn); } updateActionButtonsState(); updateEmbeddedStarState(); }
+        function selectSubCategory(subKey, btnElement) { currentSub = subKey; seenIndices.clear(); document.querySelectorAll('#sub-grid .category-btn').forEach(b => b.classList.remove('active')); btnElement.classList.add('active'); updateEmbeddedStarState(); regenBtn.textContent = "🔄 換一批"; regenBtn.onclick = (e) => { triggerHaptic(10); generatePhrases(false, e); }; generatePhrases(true); }
         
-        function setEmojiLevel(l, el) { triggerHaptic(); emojiLevel = l; el.parentNode.querySelectorAll('.control-option').forEach(x => x.classList.remove('active')); el.classList.add('active'); if(currentDisplayState.length) rerollEmojisOnly(); }
-        function setEmotionMode(m, el) { triggerHaptic(); emotionMode = m; el.parentNode.querySelectorAll('.control-option').forEach(x => x.classList.remove('active')); el.classList.add('active'); updateSourceRowVisuals(); updateActionButtonsState(); if(currentDisplayState.length) renderFromState(false); }
-        function setEmotionSource(s, el) { triggerHaptic(); emotionSource = s; el.parentNode.querySelectorAll('.control-option').forEach(x => x.classList.remove('active')); el.classList.add('active'); if(currentDisplayState.length) rerollEmotionOnly(); }
-        function updateSourceRowVisuals() { const g = document.getElementById('emotion-src-group'); g.classList.toggle('disabled-group', emotionMode === 0); }
-        function updateActionButtonsState() { const h = currentDisplayState.length > 0; regenBtn.classList.toggle('disabled', !h); emojiBtn.classList.toggle('disabled', !h); emotionBtn.classList.toggle('disabled', !h || emotionMode === 0); }
+        function setEmojiLevel(level, element) { triggerHaptic(10); emojiLevel = level; element.parentNode.querySelectorAll('.control-option').forEach(el => el.classList.remove('active')); element.classList.add('active'); if (currentDisplayState.length > 0) rerollEmojisOnly(); }
+        function setEmotionMode(mode, element) { triggerHaptic(10); const prevMode = emotionMode; emotionMode = mode; element.parentNode.querySelectorAll('.control-option').forEach(el => el.classList.remove('active')); element.classList.add('active'); if (mode === 3) { if (prevMode === 3) currentDisplayState.forEach(item => { item.specificPos = (item.specificPos === 1) ? 2 : 1; }); else currentDisplayState.forEach(item => { item.specificPos = Math.random() < 0.5 ? 1 : 2; }); } updateSourceRowVisuals(); updateActionButtonsState(); if (currentDisplayState.length > 0) renderFromState(false); }
+        function setEmotionSource(source, element) { triggerHaptic(10); emotionSource = source; element.parentNode.querySelectorAll('.control-option').forEach(el => el.classList.remove('active')); element.classList.add('active'); if (currentDisplayState.length > 0) rerollEmotionOnly(); }
+        function updateSourceRowVisuals() { const srcGroup = document.getElementById('emotion-src-group'), defaultBtn = srcGroup.querySelector('[data-style="subtle"]'); if (emotionMode === 0) { srcGroup.classList.add('disabled-group'); if(defaultBtn) defaultBtn.classList.remove('strong-active'); } else { srcGroup.classList.remove('disabled-group'); if(defaultBtn) defaultBtn.classList.add('strong-active'); } }
+        function updateActionButtonsState() { const hasPhrases = currentDisplayState.length > 0; if (hasPhrases) { regenBtn.classList.remove('disabled'); emojiBtn.classList.remove('disabled'); } else { regenBtn.classList.add('disabled'); emojiBtn.classList.add('disabled'); } if (hasPhrases && emotionMode !== 0) emotionBtn.classList.remove('disabled'); else emotionBtn.classList.add('disabled'); }
         
-        function randomAll(e) { if(isGachaPlaying) return; triggerHaptic(); seenIndices.clear(); if(e) createParticles(e.clientX, e.clientY); const mk = Object.keys(database); if(!mk.length) return; const rm = mk[Math.floor(Math.random()*mk.length)]; const mb = [...document.querySelectorAll('#main-grid .category-btn')].find(b=>b.textContent===database[rm].label); if(mb) selectMainCategory(rm, mb); const sk = Object.keys(database[rm].subs); if(!sk.length) return; const rs = sk[Math.floor(Math.random()*sk.length)]; const sb = [...document.querySelectorAll('#sub-grid .category-btn')].find(b=>b.textContent===database[rm].subs[rs].label); if(sb) selectSubCategory(rs, sb); }
-        function searchPhrases() { triggerHaptic(); const q = searchInput.value.trim().toLowerCase(); if(!q) return; currentMain = null; currentSub = null; seenIndices.clear(); document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active')); subGrid.innerHTML = ''; document.querySelector('.sub-placeholder').style.display = 'block'; document.querySelector('.sub-placeholder').textContent = `🔍 搜尋：${q}`; const m = []; Object.values(database).forEach(x => Object.values(x.subs).forEach(y => y.phrases.forEach(p => { if(p.jp.toLowerCase().includes(q)||p.cn.toLowerCase().includes(q)) m.push(p); }))); if(!m.length) return alert("無結果"); currentSearchMatches = m; refreshSearch(true); }
-        function refreshSearch(a) { generatePhrasesLogic(currentSearchMatches, a); regenBtn.style.display = 'block'; regenBtn.textContent = "🔄 換一批搜尋"; regenBtn.onclick = e => { triggerHaptic(); refreshSearch(false); if(e) createParticles(e.clientX, e.clientY); }; }
+        function randomAll(event) {
+            if(isGachaPlaying) return; triggerHaptic(10); seenIndices.clear(); 
+            if(event) createCapsuleParticles(event.clientX, event.clientY);
+            else { const rect = randomBtn.getBoundingClientRect(); createCapsuleParticles(rect.left + rect.width/2, rect.top + rect.height/2); }
+            const mainKeys = Object.keys(database); if (mainKeys.length === 0) return;
+            const randomMainKey = mainKeys[Math.floor(Math.random() * mainKeys.length)];
+            const mainBtns = document.querySelectorAll('#main-grid .category-btn'); let targetMainBtn = null; mainBtns.forEach(btn => { if (btn.textContent === database[randomMainKey].label) targetMainBtn = btn; }); if (targetMainBtn) selectMainCategory(randomMainKey, targetMainBtn);
+            const subData = database[randomMainKey].subs, subKeys = Object.keys(subData); if (subKeys.length === 0) return;
+            const randomSubKey = subKeys[Math.floor(Math.random() * subKeys.length)];
+            const subBtns = document.querySelectorAll('#sub-grid .category-btn'); let targetSubBtn = null; subBtns.forEach(btn => { if (btn.textContent === subData[randomSubKey].label) targetSubBtn = btn; });
+            if (targetSubBtn) { selectSubCategory(randomSubKey, targetSubBtn); }
+        }
         
-        function getWeightedRandom(arr, cnt) { let pool = arr.map((x,i)=>({item:x, i, w:seenIndices.has(i)?25:100})); let res = []; for(let k=0;k<cnt;k++) { if(!pool.length) break; let tw = pool.reduce((a,b)=>a+b.w,0), r = Math.random()*tw; let idx = pool.findIndex(x => (r-=x.w)<=0); if(idx===-1) idx=pool.length-1; res.push(pool[idx].item); seenIndices.add(pool[idx].i); pool.splice(idx,1); } return res; }
+        function searchPhrases() { triggerHaptic(10); const query = searchInput.value.trim().toLowerCase(); if (!query) return; currentMain = null; currentSub = null; seenIndices.clear(); document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active')); subGrid.innerHTML = ''; document.querySelector('.sub-placeholder').style.display = 'block'; document.querySelector('.sub-placeholder').textContent = `🔍 搜尋結果：${query}`; const matches = []; Object.values(database).forEach(main => { Object.values(main.subs).forEach(sub => { sub.phrases.forEach(p => { if (p.jp.toLowerCase().includes(query) || p.cn.toLowerCase().includes(query)) matches.push(p); }); }); }); if (matches.length === 0) { alert("找不到相關結果，請換個關鍵字試試！"); return; } currentSearchMatches = matches; refreshSearch(true); }
+        function getWeightedRandom(sourceArr, count) { let pool = sourceArr.map((item, index) => ({ item: item, index: index, weight: seenIndices.has(index) ? 25 : 100 })); let result = []; for (let i = 0; i < count; i++) { if (pool.length === 0) break; let totalWeight = pool.reduce((a, b) => a + b.weight, 0), r = Math.random() * totalWeight, selectedIdx = -1; for (let j = 0; j < pool.length; j++) { r -= pool[j].weight; if (r <= 0) { selectedIdx = j; break; } } if (selectedIdx === -1) selectedIdx = pool.length - 1; result.push(pool[selectedIdx].item); seenIndices.add(pool[selectedIdx].index); pool.splice(selectedIdx, 1); } return result; }
+        function refreshSearch(animate = true) { if (currentSearchMatches.length === 0) return; const count = Math.min(currentSearchMatches.length, appSettings.resultCount); const selectedPhrases = getWeightedRandom(currentSearchMatches, count); currentDisplayState = selectedPhrases.map(phrase => ({ base: phrase, emoji: generateEmojiCombo(), emotion: getRandomEmotion(), specificPos: Math.random() < 0.5 ? 1 : 2 })); renderFromState(animate); regenBtn.style.display = 'block'; regenBtn.textContent = "🔄 換一批搜尋結果"; regenBtn.onclick = (e) => { triggerHaptic(10); refreshSearch(false); if(e) createParticles(e.clientX, e.clientY); }; }
+        
         function generateEmojiCombo() {
-            if (emojiLevel === 'kaomoji') return kaomojiList.length ? " " + kaomojiList[Math.floor(Math.random()*kaomojiList.length)] : "";
-            if (emojiLevel === 0) return punctuations[Math.floor(Math.random()*punctuations.length)];
-            const f = activeFaces.length ? activeFaces : defaultFaces, d = activeDecor.length ? activeDecor : defaultDecor;
-            const cnt = emojiLevel === 3 ? Math.floor(Math.random()*3)+1 : (emojiLevel === 1 ? Math.floor(Math.random()*2)+1 : Math.floor(Math.random()*(appSettings.customMax-appSettings.customMin+1))+appSettings.customMin);
-            let r = f[Math.floor(Math.random()*f.length)]; for(let i=1;i<cnt;i++) r += d[Math.floor(Math.random()*d.length)]; return " " + r;
+            if (emojiLevel === 'kaomoji') return kaomojiList.length > 0 ? " " + kaomojiList[Math.floor(Math.random() * kaomojiList.length)] : "";
+            if (emojiLevel === 0) return punctuations[Math.floor(Math.random() * punctuations.length)];
+            const facesPool = activeFaces.length > 0 ? activeFaces : defaultFaces; const decorPool = activeDecor.length > 0 ? activeDecor : defaultDecor;
+            if (emojiLevel === 3) { const count = Math.floor(Math.random() * 3) + 1; const selectedDecor = decorPool[Math.floor(Math.random() * decorPool.length)]; let result = facesPool[Math.floor(Math.random() * facesPool.length)]; for (let i = 1; i < count; i++) result += selectedDecor; return " " + result; }
+            let count; if (emojiLevel === 1) { count = (Math.floor(Math.random() * 2) + 1); } else if (emojiLevel === 2) { const min = parseInt(appSettings.customMin); const max = parseInt(appSettings.customMax); count = Math.floor(Math.random() * (max - min + 1)) + min; } else { count = (Math.floor(Math.random() * 2) + 3); }
+            const featurePool = [...facesPool, ...decorPool]; const featureEmoji = featurePool[Math.floor(Math.random() * featurePool.length)]; const selectedDecor = decorPool[Math.floor(Math.random() * decorPool.length)]; let result = featureEmoji; for (let i = 1; i < count; i++) result += selectedDecor; return " " + result;
         }
-        function getRandomEmotion() { const s = emotionSource==='sheet2'?emotionPhrases:(emotionSource==='erotic'?database["⏫ 反應短句"]?.subs["🔞 紳士讚美"]?.phrases:(emotionSource==='common'?database["⏫ 反應短句"]?.subs["💬 極短句"]?.phrases:database["⏫ 反應短句"]?.subs["🥰 單純可愛"]?.phrases)); return s?.length ? s[Math.floor(Math.random()*s.length)] : null; }
-        
-        function generatePhrases(anim, e) { if(!currentMain || !currentSub) return; if(e) createParticles(e.clientX, e.clientY); const d = currentMain!=='featured_custom' ? database[currentMain].subs[currentSub] : database[savedSubCategories.find(i=>i.sub===currentSub).main].subs[currentSub]; generatePhrasesLogic(d.phrases, anim); regenBtn.textContent = "🔄 換一批"; regenBtn.onclick = ev => { triggerHaptic(); generatePhrases(false, ev); }; }
-        function generatePhrasesLogic(src, anim) { const cnt = Math.min(src.length, appSettings.resultCount); const sel = getWeightedRandom(src, cnt); currentDisplayState = sel.map(p => ({ base: p, emoji: generateEmojiCombo(), emotion: getRandomEmotion(), specificPos: Math.random()<0.5?1:2 })); renderFromState(anim); }
-        function rerollEmojisOnly(e) { triggerHaptic(); if(e) createParticles(e.clientX, e.clientY); currentDisplayState.forEach(i => i.emoji = generateEmojiCombo()); renderFromState(false); }
-        function rerollEmotionOnly(e) { triggerHaptic(); if(e) createParticles(e.clientX, e.clientY); currentDisplayState.forEach(i => i.emotion = getRandomEmotion()); renderFromState(false); }
-        
-        function renderFromState(anim) {
+        function getRandomEmotion() { const sourceData = getEmotionSourceData(); return sourceData.length > 0 ? sourceData[Math.floor(Math.random() * sourceData.length)] : null; }
+        function generatePhrases(animate = true, event = null) { if (!currentMain || !currentSub) return; if (event) createParticles(event.clientX, event.clientY); if (currentMain !== 'featured_custom') { const targetData = database[currentMain].subs[currentSub]; const count = Math.min(targetData.phrases.length, appSettings.resultCount); const selectedPhrases = getWeightedRandom(targetData.phrases, count); currentDisplayState = selectedPhrases.map(phrase => ({ base: phrase, emoji: generateEmojiCombo(), emotion: getRandomEmotion(), specificPos: Math.random() < 0.5 ? 1 : 2 })); renderFromState(animate); } else { const item = savedSubCategories.find(i => i.sub === currentSub); if (item) { const targetData = database[item.main].subs[item.sub]; const count = Math.min(targetData.phrases.length, appSettings.resultCount); const selectedPhrases = getWeightedRandom(targetData.phrases, count); currentDisplayState = selectedPhrases.map(phrase => ({ base: phrase, emoji: generateEmojiCombo(), emotion: getRandomEmotion(), specificPos: Math.random() < 0.5 ? 1 : 2 })); renderFromState(animate); } } regenBtn.textContent = "🔄 換一批"; regenBtn.onclick = (e) => { triggerHaptic(10); generatePhrases(false, e); }; }
+        function rerollEmojisOnly(event = null) { triggerHaptic(10); if (event) createParticles(event.clientX, event.clientY); if (currentDisplayState.length === 0) return; currentDisplayState.forEach(item => { item.emoji = generateEmojiCombo(); }); renderFromState(false); }
+        function rerollEmotionOnly(event = null) { triggerHaptic(10); if (event) createParticles(event.clientX, event.clientY); if (currentDisplayState.length === 0) return; currentDisplayState.forEach(item => { item.emotion = getRandomEmotion(); }); renderFromState(false); }
+        function getEmotionSourceData() { 
+            if (emotionSource === 'sheet2') return emotionPhrases; 
+            if (emotionSource === 'erotic') return database["⏫ 反應短句"]?.subs["🔞 紳士讚美"]?.phrases || []; 
+            if (emotionSource === 'common') return database["⏫ 反應短句"]?.subs["💬 極短句"]?.phrases || []; 
+            if (emotionSource === 'cute') return database["⏫ 反應短句"]?.subs["🥰 單純可愛"]?.phrases || []; 
+            return []; 
+        }
+        function renderFromState(animate = true) {
             resultArea.innerHTML = '';
-            currentDisplayState.forEach((item, idx) => {
-                let j = item.base.jp + item.emoji, c = item.base.cn, jc = j; let em = emotionMode === 3 ? item.specificPos : emotionMode;
-                if (em !== 0 && item.emotion) {
-                    const ej = `<span class="emo-segment">${item.emotion.jp}</span>`, ec = `<span class="emo-segment">${item.emotion.cn}</span>`;
-                    if (em === 1) { j = ej + (emotionSource!=='sheet2'?'！':'') + item.base.jp + item.emoji; c = ec + "，" + item.base.cn; jc = item.emotion.jp + (emotionSource!=='sheet2'?'！':'') + item.base.jp + item.emoji; }
-                    else { j = item.base.jp + "！" + ej + item.emoji; c = item.base.cn + "，" + ec; jc = item.base.jp + "！" + item.emotion.jp + item.emoji; }
-                }
-                const div = document.createElement('div'); div.className = 'result-item ' + (anim ? 'animate-in' : 'fade-in'); if(anim) div.style.animationDelay = idx*0.05+'s';
-                const isFav = favorites.includes(jc);
-                div.innerHTML = `<div class="result-left" onclick="handleResultClick('${jc}', event)">${j}</div><div class="result-actions"><div class="action-icon icon-speak" onclick="speakText('${jc}')">🔊</div><div class="action-icon icon-star ${isFav?'active':''}" onclick="toggleFavorite('${jc}', this)">${isFav?'★':'☆'}</div></div><div class="result-right">${c}</div>`;
+            currentDisplayState.forEach((item, index) => {
+                let jpBase = item.base.jp + item.emoji, cnBase = item.base.cn, jpDisplay = jpBase, cnDisplay = cnBase, jpCopy = jpBase; let effectiveMode = emotionMode;
+                if (emotionMode === 3) { if (!item.specificPos) item.specificPos = Math.random() < 0.5 ? 1 : 2; effectiveMode = item.specificPos; }
+                if (effectiveMode !== 0 && item.emotion) { const randomEmotion = item.emotion; const emoSpanJp = `<span class="emo-segment">${randomEmotion.jp}</span>`, emoSpanCn = `<span class="emo-segment">${randomEmotion.cn}</span>`; if (effectiveMode === 1) { let separator = ""; if (emotionSource !== 'sheet2') separator = "！"; jpDisplay = emoSpanJp + separator + jpBase; cnDisplay = emoSpanCn + "，" + cnBase; jpCopy = randomEmotion.jp + separator + jpBase; } else if (effectiveMode === 2) { jpDisplay = item.base.jp + "！" + emoSpanJp + item.emoji; cnDisplay = item.base.cn + "，" + emoSpanCn; jpCopy = item.base.jp + "！" + randomEmotion.jp + item.emoji; } }
+                const div = document.createElement('div'); div.className = 'result-item'; if (animate) { div.classList.add('animate-in'); div.style.animationDelay = `${index * 0.05}s`; } else div.classList.add('fade-in');
+                const isFav = favorites.includes(jpCopy); const starClass = isFav ? 'active' : ''; const starChar = isFav ? '★' : '☆';
+                div.innerHTML = `<div class="result-left" onclick="handleResultClick('${jpCopy}', event)">${jpDisplay}</div><div class="result-actions"><div class="action-icon icon-speak" onclick="speakText('${jpCopy}')">🔊</div><div class="action-icon icon-star ${starClass}" onclick="toggleFavorite('${jpCopy}', this)">${starChar}</div></div><div class="result-right">${cnDisplay}</div>`;
                 resultArea.appendChild(div);
             });
             clickHint.style.display = 'block'; updateActionButtonsState();
         }
-        function handleResultClick(t, e) {
-            triggerHaptic(50); if(e) createParticles(e.clientX, e.clientY);
-            if (isBuilderMode) { const ta = document.getElementById('builder-input'); ta.value += (ta.value ? "\n" : "") + t; ta.scrollTop = ta.scrollHeight; showToast("📝 已追加！"); }
-            else copyToClipboard(t);
-        }
-        function copyToClipboard(t) { addToHistory(t); navigator.clipboard.writeText(t).then(()=>showToast()).catch(()=>prompt("複製失敗，請手動複製", t)); }
-        function showToast(m) { toast.textContent = m || "✅ 已複製！"; toast.className = "toast show"; setTimeout(() => toast.className = "toast", 1500); }
         
+        function handleResultClick(text, event) {
+            triggerHaptic(50);
+            if (event) createParticles(event.clientX, event.clientY);
+            if (isBuilderMode) {
+                const textarea = document.getElementById('builder-input');
+                textarea.value += (textarea.value ? "\n" : "") + text;
+                textarea.scrollTop = textarea.scrollHeight;
+                showToast("📝 已追加到暫存框！");
+            } else { copyToClipboard(text); }
+        }
+
+        function copyToClipboard(text, event) {
+            addToHistory(text);
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(showToast).catch((err) => fallbackCopy(text)); } else fallbackCopy(text);
+        }
+        function fallbackCopy(text) { const textArea = document.createElement("textarea"); textArea.value = text; textArea.style.position = "fixed"; textArea.style.left = "0"; textArea.style.top = "0"; textArea.style.width = "1px"; textArea.style.height = "1px"; textArea.style.padding = "0"; textArea.style.border = "none"; textArea.style.outline = "none"; textArea.style.boxShadow = "none"; textArea.style.background = "transparent"; document.body.appendChild(textArea); textArea.focus({preventScroll: true}); textArea.select(); try { const successful = document.execCommand('copy'); if(successful) showToast(); } catch (err) { alert("複製失敗，請手動複製內容"); } document.body.removeChild(textArea); }
+        function showToast(msg) { 
+            toast.textContent = msg || "✅ 已複製內容！";
+            toast.className = "toast show"; 
+            if(window.toastTimeout) clearTimeout(window.toastTimeout); 
+            window.toastTimeout = setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 1500); 
+        }
         init();
     </script>
 </body>
 </html>
+
 
